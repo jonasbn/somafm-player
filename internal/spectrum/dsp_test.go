@@ -88,7 +88,11 @@ func TestBandForFreq_AssignsToCorrectBucket(t *testing.T) {
 func TestBucketMagnitudes_GroupsIntoExpectedBandAndAverages(t *testing.T) {
 	// Simulate a real-FFT coefficient slice for an 8-point window at
 	// sampleRate=8000 (len = n/2+1 = 5, bin i => freq = i/8*8000 = i*1000Hz).
-	// Put all the energy in bin 2 (2000Hz); everything else is silent.
+	// Put all the energy in bin 2 (2000Hz); bins 1,3,4 are silent.
+	// Bins 2,3,4 (2000/3000/4000Hz) all fall in the same log-spaced band
+	// (band 3 of 4, covering ~1064-4000Hz), so that band's average is
+	// (10+0+0)/3, not 10 — the average includes every bin mapped into the
+	// bucket, not just the non-zero ones.
 	coeffs := make([]complex128, 5)
 	coeffs[2] = complex(10, 0)
 
@@ -105,8 +109,9 @@ func TestBucketMagnitudes_GroupsIntoExpectedBandAndAverages(t *testing.T) {
 	if nonZero != 1 {
 		t.Fatalf("expected exactly one non-zero band, got %d: %v", nonZero, bands)
 	}
-	if bands[peak] != 10 {
-		t.Fatalf("bands[%d] = %v, want 10", peak, bands[peak])
+	want := 10.0 / 3.0
+	if math.Abs(bands[peak]-want) > 1e-9 {
+		t.Fatalf("bands[%d] = %v, want %v (average of bins mapping into this band: 10, 0, 0)", peak, bands[peak], want)
 	}
 }
 

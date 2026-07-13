@@ -87,11 +87,8 @@ func bucketMagnitudes(coeffs []complex128, sampleRate int, bars int) []float64 {
 		if band < 0 {
 			continue
 		}
-		mag := cmplx.Abs(coeffs[i])
-		if mag > 0 {
-			raw[band] += mag
-			counts[band]++
-		}
+		raw[band] += cmplx.Abs(coeffs[i])
+		counts[band]++
 	}
 	for i := range raw {
 		if counts[i] > 0 {
