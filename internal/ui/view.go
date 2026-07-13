@@ -10,6 +10,10 @@ import (
 	"github.com/jonasbn/somafm-player/internal/theme"
 )
 
+// decorationPerBox accounts for the rounded border (1 col each side) plus
+// Padding(0, 1) (1 col each side) that borderStyle applies to every box.
+const decorationPerBox = 4
+
 func borderStyle(t theme.Theme, focused bool) lipgloss.Style {
 	color := t.Border
 	if focused {
@@ -57,19 +61,16 @@ func (m Model) renderVolumeBar() string {
 	return label
 }
 
-func (m Model) listHeader() string {
-	labels := []string{"Channels", "Bookmarked Channels", "Bookmarked Tunes", "History"}
-	for i, l := range labels {
-		if viewMode(i) == m.mode {
-			labels[i] = "[" + l + "]"
-		}
+func (m Model) channelsHeader() string {
+	label := "All"
+	if m.channelsFilter == filterBookmarked {
+		label = "Bookmarked"
 	}
-	return strings.Join(labels, " ▸ ")
+	return fmt.Sprintf("Channels ▸ [%s]  (a) all/bookmarked  (j/k) move", label)
 }
 
-func (m Model) listLines() []string {
-	switch m.mode {
-	case viewChannels:
+func (m Model) channelsLines() []string {
+	if m.channelsFilter == filterAll {
 		lines := make([]string, len(m.channels))
 		for i, ch := range m.channels {
 			mark := "  "
@@ -79,17 +80,22 @@ func (m Model) listLines() []string {
 			lines[i] = fmt.Sprintf("%s%-24s %s", mark, ch.Title, ch.Genre)
 		}
 		return lines
-	case viewBookmarkedChannels:
-		lines := make([]string, len(m.cfg.BookmarkedChannels))
-		copy(lines, m.cfg.BookmarkedChannels)
-		return lines
-	case viewBookmarkedTunes:
-		lines := make([]string, len(m.cfg.BookmarkedTunes))
-		for i, t := range m.cfg.BookmarkedTunes {
-			lines[i] = fmt.Sprintf("%s — %s (%s)", t.Title, t.Artist, t.Channel)
-		}
-		return lines
-	case viewHistory:
+	}
+	lines := make([]string, len(m.cfg.BookmarkedChannels))
+	copy(lines, m.cfg.BookmarkedChannels)
+	return lines
+}
+
+func (m Model) tunesHeader() string {
+	label := "History"
+	if m.tunesMode == tunesBookmarked {
+		label = "Bookmarked"
+	}
+	return fmt.Sprintf("Tunes ▸ [%s]  (H/s) history/bookmarked  (j/k) move", label)
+}
+
+func (m Model) tunesLines() []string {
+	if m.tunesMode == tunesHistory {
 		entries := m.hist.Entries()
 		lines := make([]string, len(entries))
 		for i, e := range entries {
@@ -97,24 +103,50 @@ func (m Model) listLines() []string {
 		}
 		return lines
 	}
-	return nil
+	lines := make([]string, len(m.cfg.BookmarkedTunes))
+	for i, tu := range m.cfg.BookmarkedTunes {
+		lines[i] = fmt.Sprintf("%s — %s (%s)", tu.Title, tu.Artist, tu.Channel)
+	}
+	return lines
 }
 
-func (m Model) renderList(t theme.Theme) string {
-	lines := m.listLines()
+func renderBox(t theme.Theme, focused bool, width int, header string, lines []string, selected int) string {
 	rendered := make([]string, 0, len(lines)+1)
-	rendered = append(rendered, m.listHeader())
+	rendered = append(rendered, header)
 	if len(lines) == 0 {
 		rendered = append(rendered, "(empty)")
 	}
 	for i, line := range lines {
 		prefix := "  "
-		if i == m.selected {
+		if i == selected {
 			prefix = "> "
 		}
 		rendered = append(rendered, prefix+line)
 	}
-	return borderStyle(t, m.focus == focusList).Render(strings.Join(rendered, "\n"))
+	return borderStyle(t, focused).Width(width).Render(strings.Join(rendered, "\n"))
+}
+
+func (m Model) renderChannelsBox(t theme.Theme, width int) string {
+	return renderBox(t, m.focus == focusChannels, width, m.channelsHeader(), m.channelsLines(), m.channelSelected)
+}
+
+func (m Model) renderTunesBox(t theme.Theme, width int) string {
+	return renderBox(t, m.focus == focusTunes, width, m.tunesHeader(), m.tunesLines(), m.tuneSelected)
+}
+
+// boxWidth splits the terminal width evenly between the two side-by-side
+// list boxes, minus each box's border/padding decoration. Falls back to
+// defaultWidth before the first tea.WindowSizeMsg arrives.
+func (m Model) boxWidth() int {
+	w := m.width
+	if w <= 0 {
+		w = defaultWidth
+	}
+	usable := w - 2*decorationPerBox
+	if usable < 2 {
+		usable = 2
+	}
+	return usable / 2
 }
 
 func (m Model) View() string {
@@ -123,14 +155,17 @@ func (m Model) View() string {
 	}
 	t := theme.Get(m.cfg.Theme)
 
-	footer := fmt.Sprintf("[Theme: %s]  tab focus · j/k move · enter play · b bookmark · c/f/s/H panels · +/- vol · m mute · t theme · r retry channels · q quit", t.Name)
+	width := m.boxWidth()
+	lists := lipgloss.JoinHorizontal(lipgloss.Top, m.renderChannelsBox(t, width), m.renderTunesBox(t, width))
+
+	footer := fmt.Sprintf("[Theme: %s]  tab focus · j/k move · enter play · b bookmark · a all/bookmarked · H/s tunes · +/- vol · m mute · t theme · r retry channels · q quit", t.Name)
 	if m.errMsg != "" {
 		footer = "Error: " + m.errMsg + "\n" + footer
 	}
 
 	return strings.Join([]string{
 		m.renderNowPlaying(t),
-		m.renderList(t),
+		lists,
 		footer,
 	}, "\n")
 }
