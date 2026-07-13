@@ -41,6 +41,13 @@ func TestResampleBands_NilBandsProducesZeroFilledSlice(t *testing.T) {
 	}
 }
 
+func TestResampleBands_NegativeBarCountDoesNotPanicReturnsEmpty(t *testing.T) {
+	got := resampleBands([]float64{0.1, 0.2, 0.3}, -1)
+	if len(got) != 0 {
+		t.Fatalf("len = %d, want 0 for negative barCount", len(got))
+	}
+}
+
 func TestDisplayBarCount_ClampsToBounds(t *testing.T) {
 	if got := displayBarCount(3); got != minDisplayBars {
 		t.Errorf("displayBarCount(3) = %d, want %d", got, minDisplayBars)

@@ -34,6 +34,9 @@ func displayBarCount(width int) int {
 // playing) produces a zero-filled slice of length barCount, rendering as
 // flat bars rather than an empty/collapsed box.
 func resampleBands(bands []float64, barCount int) []float64 {
+	if barCount < 0 {
+		barCount = 0
+	}
 	out := make([]float64, barCount)
 	if len(bands) == 0 || barCount <= 0 {
 		return out
