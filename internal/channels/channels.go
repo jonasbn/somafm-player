@@ -48,6 +48,9 @@ func Fetch(ctx context.Context, url string) ([]Channel, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status %d from %s", resp.StatusCode, url)
+	}
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -96,6 +99,9 @@ func ResolveStreamURL(ctx context.Context, plsURL string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status %d from %s", resp.StatusCode, plsURL)
+	}
 
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
