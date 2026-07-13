@@ -235,6 +235,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleBookmarkKey(), nil
 		case "t":
 			return m.cycleTheme(), nil
+		case "v":
+			return m.toggleVisualizer()
 		case "r":
 			return m, fetchChannelsCmd(channels.DefaultChannelsURL)
 		}
