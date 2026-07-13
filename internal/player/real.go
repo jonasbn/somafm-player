@@ -9,6 +9,8 @@ import (
 	mp3 "github.com/hajimehoshi/go-mp3"
 	"github.com/hajimehoshi/oto"
 	"github.com/romantomjak/shoutcast"
+
+	"github.com/jonasbn/somafm-player/internal/spectrum"
 )
 
 // backoffSchedule is the reconnect delay schedule: 1s, 2s, then 5s
@@ -36,9 +38,10 @@ type RealPlayer struct {
 	volume int
 	muted  bool
 
-	cancel context.CancelFunc
-	stream *shoutcast.Stream
-	done   chan struct{}
+	cancel   context.CancelFunc
+	stream   *shoutcast.Stream
+	done     chan struct{}
+	analyzer *spectrum.Analyzer
 }
 
 // NewRealPlayer constructs a RealPlayer ready to Play streams.
@@ -61,6 +64,18 @@ func (p *RealPlayer) SetMuted(muted bool) {
 	p.mu.Lock()
 	p.muted = muted
 	p.mu.Unlock()
+}
+
+// Spectrum returns the current smoothed frequency-band values from the
+// active stream's analyzer, or nil if nothing is currently playing.
+func (p *RealPlayer) Spectrum() []float64 {
+	p.mu.Lock()
+	a := p.analyzer
+	p.mu.Unlock()
+	if a == nil {
+		return nil
+	}
+	return a.Bands()
 }
 
 func (p *RealPlayer) volumeFactor() float64 {
@@ -228,6 +243,19 @@ func (p *RealPlayer) playOnce(ctx context.Context, streamURL string) error {
 	otoPlayer := otoCtx.NewPlayer()
 	defer otoPlayer.Close()
 
+	analyzer := spectrum.New(decoder.SampleRate())
+	p.mu.Lock()
+	p.analyzer = analyzer
+	p.mu.Unlock()
+	defer func() {
+		p.mu.Lock()
+		if p.analyzer == analyzer {
+			p.analyzer = nil
+		}
+		p.mu.Unlock()
+		analyzer.Close()
+	}()
+
 	vr := newVolumeReader(decoder, p.volumeFactor)
 	p.msgs <- ReconnectedMsg{}
 
@@ -241,6 +269,7 @@ func (p *RealPlayer) playOnce(ctx context.Context, streamURL string) error {
 			if _, writeErr := otoPlayer.Write(buf[:n]); writeErr != nil {
 				return writeErr
 			}
+			analyzer.Feed(buf[:n])
 		}
 		if readErr != nil {
 			return readErr

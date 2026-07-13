@@ -36,3 +36,10 @@ func TestFakePlayer_EmitDeliversOnMessagesChannel(t *testing.T) {
 		t.Fatalf("Messages() delivered %+v, want TrackChangedMsg{Song, Band}", msg)
 	}
 }
+
+func TestFakePlayer_SpectrumReturnsNil(t *testing.T) {
+	p := NewFakePlayer()
+	if got := p.Spectrum(); got != nil {
+		t.Fatalf("Spectrum() = %v, want nil", got)
+	}
+}

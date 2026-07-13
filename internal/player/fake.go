@@ -44,6 +44,13 @@ func (p *FakePlayer) Messages() <-chan Msg {
 	return p.msgs
 }
 
+// Spectrum always returns nil: FakePlayer does no real decoding, so there
+// is no audio to analyze. UI code consuming this exercises the nil
+// ("nothing playing" / flat bars) path deterministically in tests.
+func (p *FakePlayer) Spectrum() []float64 {
+	return nil
+}
+
 func (p *FakePlayer) Emit(msg Msg) {
 	p.msgs <- msg
 }

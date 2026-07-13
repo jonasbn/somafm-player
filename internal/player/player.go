@@ -17,4 +17,5 @@ type Player interface {
 	SetVolume(percent int)
 	SetMuted(muted bool)
 	Messages() <-chan Msg
+	Spectrum() []float64
 }
