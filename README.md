@@ -63,8 +63,9 @@ go run .
 | `+`/`-` or arrows | volume up/down |
 | `m` | mute/unmute |
 | `t` | cycle theme |
+| `v` | toggle equalizer visualizer |
 | `r` | retry fetching the channel list (e.g. after a startup network error) |
 | `q` | quit |
 
-Config, including bookmarks, volume, theme, and last-played channel, is stored at
+Config, including bookmarks, volume, theme, last-played channel, and visualizer setting, is stored at
 `~/.config/somafm-player/config.json` (or under `$XDG_CONFIG_HOME` if set).
