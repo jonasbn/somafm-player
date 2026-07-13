@@ -26,6 +26,26 @@ func TestUpdate_EnterOnChannelResolvesAndPlays(t *testing.T) {
 	}
 }
 
+func TestUpdate_EnterOnBookmarkedChannelResolvesAndPlays(t *testing.T) {
+	m := newTestModel()
+	m.cfg.BookmarkedChannels = []string{"Drone Zone"}
+	m.mode = viewBookmarkedChannels
+	m.selected = 0
+
+	_, cmd := m.Update(key("enter"))
+	if cmd == nil {
+		t.Fatal("expected enter to return a resolve command")
+	}
+	msg := cmd()
+	resolved, ok := msg.(streamResolvedMsg)
+	if !ok {
+		t.Fatalf("expected streamResolvedMsg, got %T", msg)
+	}
+	if resolved.channelTitle != "Drone Zone" {
+		t.Fatalf("resolved.channelTitle = %q, want Drone Zone", resolved.channelTitle)
+	}
+}
+
 func TestUpdate_StreamResolvedMsgStartsPlaybackAndSetsNowPlaying(t *testing.T) {
 	fp := player.NewFakePlayer()
 	m := New(config.DefaultConfig(), []channels.Channel{{Title: "Drone Zone"}}, fp, history.New(5))
