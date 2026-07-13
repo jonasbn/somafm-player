@@ -11,10 +11,10 @@ func TestSaveThenLoad_RoundTrips(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", dir)
 
 	cfg := Config{
-		LastChannel: "Drone Zone",
-		Volume:      65,
-		Muted:       false,
-		Theme:       "Dracula",
+		LastChannel:        "Drone Zone",
+		Volume:             65,
+		Muted:              false,
+		Theme:              "Dracula",
 		BookmarkedChannels: []string{"Drone Zone", "Groove Salad"},
 		BookmarkedTunes: []BookmarkedTune{
 			{Title: "Track", Artist: "Artist", Channel: "Drone Zone", BookmarkedAt: time.Date(2026, 7, 13, 10, 0, 0, 0, time.UTC)},
