@@ -1,26 +1,121 @@
 package ui
 
-import tea "github.com/charmbracelet/bubbletea"
+import (
+	tea "github.com/charmbracelet/bubbletea"
 
-type Model struct {
-	quitting bool
+	"github.com/jonasbn/somafm-player/internal/channels"
+	"github.com/jonasbn/somafm-player/internal/config"
+	"github.com/jonasbn/somafm-player/internal/history"
+	"github.com/jonasbn/somafm-player/internal/player"
+)
+
+type viewMode int
+
+const (
+	viewChannels viewMode = iota
+	viewBookmarkedChannels
+	viewBookmarkedTunes
+	viewHistory
+)
+
+type focusArea int
+
+const (
+	focusNowPlaying focusArea = iota
+	focusList
+)
+
+type nowPlayingState struct {
+	title     string
+	artist    string
+	channel   string
+	bitrate   int
+	codec     string
+	connected bool
 }
 
-func New() Model {
-	return Model{}
+type Model struct {
+	cfg      config.Config
+	channels []channels.Channel
+	selected int
+	mode     viewMode
+	focus    focusArea
+
+	player player.Player
+	hist   *history.History
+
+	nowPlaying nowPlayingState
+	errMsg     string
+	quitting   bool
+}
+
+func New(cfg config.Config, chs []channels.Channel, p player.Player, hist *history.History) Model {
+	return Model{
+		cfg:      cfg,
+		channels: chs,
+		player:   p,
+		hist:     hist,
+	}
 }
 
 func (m Model) Init() tea.Cmd {
 	return nil
 }
 
+func (m Model) currentListLen() int {
+	switch m.mode {
+	case viewChannels:
+		return len(m.channels)
+	case viewBookmarkedChannels:
+		return len(m.cfg.BookmarkedChannels)
+	case viewBookmarkedTunes:
+		return len(m.cfg.BookmarkedTunes)
+	case viewHistory:
+		return len(m.hist.Entries())
+	}
+	return 0
+}
+
+func (m Model) switchMode(mode viewMode) Model {
+	m.mode = mode
+	m.selected = 0
+	return m
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyTab:
+			if m.focus == focusNowPlaying {
+				m.focus = focusList
+			} else {
+				m.focus = focusNowPlaying
+			}
+			return m, nil
+		}
 		switch msg.String() {
 		case "q", "ctrl+c":
 			m.quitting = true
 			return m, tea.Quit
+		case "j", "down":
+			if n := m.currentListLen(); n > 0 && m.selected < n-1 {
+				m.selected++
+			}
+			return m, nil
+		case "k", "up":
+			if m.selected > 0 {
+				m.selected--
+			}
+			return m, nil
+		case "c":
+			return m.switchMode(viewChannels), nil
+		case "f":
+			return m.switchMode(viewBookmarkedChannels), nil
+		case "s":
+			return m.switchMode(viewBookmarkedTunes), nil
+		case "H":
+			return m.switchMode(viewHistory), nil
 		}
 	}
 	return m, nil
@@ -30,5 +125,5 @@ func (m Model) View() string {
 	if m.quitting {
 		return ""
 	}
-	return "somafm-player (press q to quit)\n"
+	return "somafm-player\n"
 }
