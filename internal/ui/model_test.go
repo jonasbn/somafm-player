@@ -91,6 +91,22 @@ func TestUpdate_PanelSwitchKeysChangeModeAndResetSelection(t *testing.T) {
 	}
 }
 
+func TestNew_SyncsSavedVolumeAndMuteIntoPlayer(t *testing.T) {
+	fp := player.NewFakePlayer()
+	cfg := config.DefaultConfig()
+	cfg.Volume = 20
+	cfg.Muted = true
+
+	_ = New(cfg, nil, fp, history.New(5))
+
+	if got := fp.Volume(); got != 20 {
+		t.Fatalf("player volume after New() = %d, want 20 (from saved config)", got)
+	}
+	if !fp.Muted() {
+		t.Fatal("player muted after New() = false, want true (from saved config)")
+	}
+}
+
 func TestUpdate_TabTogglesFocus(t *testing.T) {
 	m := newTestModel()
 	if m.focus != focusNowPlaying {

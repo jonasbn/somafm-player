@@ -57,6 +57,11 @@ type Model struct {
 }
 
 func New(cfg config.Config, chs []channels.Channel, p player.Player, hist *history.History) Model {
+	// Sync the loaded config's volume/mute state into the player itself so
+	// the very first Play() call (including the auto-resume path in Init)
+	// honors the user's saved settings instead of the player's own defaults.
+	p.SetVolume(cfg.Volume)
+	p.SetMuted(cfg.Muted)
 	return Model{
 		cfg:            cfg,
 		channels:       chs,
@@ -176,6 +181,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.handleBookmarkKey(), nil
 		case "t":
 			return m.cycleTheme(), nil
+		case "r":
+			return m, fetchChannelsCmd(channels.DefaultChannelsURL)
 		}
 	}
 
