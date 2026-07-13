@@ -46,3 +46,24 @@ The player should be a simple Go program that:
 
 - Go
 - A TUI framework (e.g., `tview` or `bubbletea`) for the terminal interface.
+
+## Usage
+
+```
+go run .
+```
+
+| Key | Action |
+|---|---|
+| `tab` | toggle focus between Now Playing and the list panel |
+| `j`/`k` or arrows | move selection |
+| `enter` | play selected channel |
+| `c` / `f` / `s` / `H` | switch list panel: Channels / Bookmarked Channels / Bookmarked Tunes / History |
+| `b` | bookmark (context-sensitive: tune on Now Playing, channel on Channels/Bookmarked Channels, tune on History) |
+| `+`/`-` or arrows | volume up/down |
+| `m` | mute/unmute |
+| `t` | cycle theme |
+| `q` | quit |
+
+Config, including bookmarks, volume, theme, and last-played channel, is stored at
+`~/.config/somafm-player/config.json` (or under `$XDG_CONFIG_HOME` if set).
