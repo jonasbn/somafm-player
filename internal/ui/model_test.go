@@ -27,6 +27,10 @@ func key(s string) tea.KeyMsg {
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
 }
 
+func historyEntry(title, artist, channel string) history.Entry {
+	return history.Entry{Title: title, Artist: artist, Channel: channel}
+}
+
 func TestUpdate_QuitsOnQ(t *testing.T) {
 	m := newTestModel()
 	_, cmd := m.Update(key("q"))

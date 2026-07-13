@@ -154,6 +154,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.adjustVolume(-5), nil
 		case "m":
 			return m.toggleMute(), nil
+		case "b":
+			return m.handleBookmarkKey(), nil
 		}
 	}
 
