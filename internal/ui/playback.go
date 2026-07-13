@@ -63,6 +63,7 @@ func (m Model) handlePlaybackMsg(msg tea.Msg) (Model, tea.Cmd) {
 			connected:    true,
 			trackStarted: time.Now(),
 		}
+		m.cfg.LastChannel = msg.channelTitle
 		m.errMsg = ""
 		m.player.Play(msg.streamURL)
 		return m, nil

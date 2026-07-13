@@ -67,7 +67,24 @@ func New(cfg config.Config, chs []channels.Channel, p player.Player, hist *histo
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(waitForPlayerMsg(m.player), tickCmd())
+	cmds := []tea.Cmd{waitForPlayerMsg(m.player), tickCmd()}
+	if m.cfg.LastChannel != "" {
+		for _, ch := range m.channels {
+			if ch.Title == m.cfg.LastChannel {
+				cmds = append(cmds, resolveAndPlayCmd(ch))
+				break
+			}
+		}
+	}
+	return tea.Batch(cmds...)
+}
+
+// WithStartupError returns a copy of m with errMsg set, for surfacing a
+// startup-time error (e.g. a failed channel list fetch) inline in the UI
+// rather than crashing the process.
+func (m Model) WithStartupError(msg string) Model {
+	m.errMsg = msg
+	return m
 }
 
 func (m Model) currentListLen() int {
@@ -124,6 +141,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "q", "ctrl+c":
 			m.quitting = true
+			_ = config.Save(m.cfg)
 			return m, tea.Quit
 		case "j", "down":
 			if n := m.currentListLen(); n > 0 && m.selected < n-1 {

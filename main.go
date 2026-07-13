@@ -23,13 +23,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	chs, err := channels.Fetch(context.Background(), channelsURL)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "error fetching channel list:", err)
-		os.Exit(1)
-	}
+	chs, fetchErr := channels.Fetch(context.Background(), channelsURL)
 
 	m := ui.New(cfg, chs, player.NewRealPlayer(), history.New(5))
+	if fetchErr != nil {
+		m = m.WithStartupError(fmt.Sprintf("Couldn't load channel list — check your connection, press r to retry (%v)", fetchErr))
+	}
+
 	p := tea.NewProgram(m)
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
