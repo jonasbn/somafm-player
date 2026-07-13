@@ -31,8 +31,8 @@ func TestUpdate_EnterOnChannelResolvesAndPlays(t *testing.T) {
 func TestUpdate_EnterOnBookmarkedChannelResolvesAndPlays(t *testing.T) {
 	m := newTestModel()
 	m.cfg.BookmarkedChannels = []string{"Drone Zone"}
-	m.mode = viewBookmarkedChannels
-	m.selected = 0
+	m.channelsFilter = filterBookmarked
+	m.channelSelected = 0
 
 	_, cmd := m.Update(key("enter"))
 	if cmd == nil {
