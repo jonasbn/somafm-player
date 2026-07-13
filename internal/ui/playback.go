@@ -3,6 +3,7 @@ package ui
 import (
 	"context"
 	"fmt"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -56,10 +57,11 @@ func (m Model) handlePlaybackMsg(msg tea.Msg) (Model, tea.Cmd) {
 		m = m.recordCurrentTrackToHistory()
 		bitrate, codec := channels.ParseBitrateFromURL(msg.streamURL)
 		m.nowPlaying = nowPlayingState{
-			channel:   msg.channelTitle,
-			bitrate:   bitrate,
-			codec:     codec,
-			connected: true,
+			channel:      msg.channelTitle,
+			bitrate:      bitrate,
+			codec:        codec,
+			connected:    true,
+			trackStarted: time.Now(),
 		}
 		m.errMsg = ""
 		m.player.Play(msg.streamURL)
@@ -69,6 +71,7 @@ func (m Model) handlePlaybackMsg(msg tea.Msg) (Model, tea.Cmd) {
 		m = m.recordCurrentTrackToHistory()
 		m.nowPlaying.title = msg.Title
 		m.nowPlaying.artist = msg.Artist
+		m.nowPlaying.trackStarted = time.Now()
 		return m, nil
 
 	case player.ConnectionLostMsg:

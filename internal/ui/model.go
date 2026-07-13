@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/jonasbn/somafm-player/internal/channels"
@@ -26,12 +28,14 @@ const (
 )
 
 type nowPlayingState struct {
-	title     string
-	artist    string
-	channel   string
-	bitrate   int
-	codec     string
-	connected bool
+	title        string
+	artist       string
+	channel      string
+	bitrate      int
+	codec        string
+	connected    bool
+	trackStarted time.Time
+	elapsed      string
 }
 
 type Model struct {
@@ -47,19 +51,23 @@ type Model struct {
 	nowPlaying nowPlayingState
 	errMsg     string
 	quitting   bool
+
+	sessionStarted time.Time
+	session        string
 }
 
 func New(cfg config.Config, chs []channels.Channel, p player.Player, hist *history.History) Model {
 	return Model{
-		cfg:      cfg,
-		channels: chs,
-		player:   p,
-		hist:     hist,
+		cfg:            cfg,
+		channels:       chs,
+		player:         p,
+		hist:           hist,
+		sessionStarted: time.Now(),
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return waitForPlayerMsg(m.player)
+	return tea.Batch(waitForPlayerMsg(m.player), tickCmd())
 }
 
 func (m Model) currentListLen() int {
@@ -141,6 +149,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
+	}
+
+	if t, ok := msg.(tickMsg); ok {
+		return m.handleTick(time.Time(t)), tickCmd()
 	}
 
 	switch msg.(type) {
