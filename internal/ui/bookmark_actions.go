@@ -6,7 +6,8 @@ import (
 )
 
 func (m Model) handleBookmarkKey() Model {
-	if m.focus == focusNowPlaying {
+	switch m.focus {
+	case focusNowPlaying:
 		if m.nowPlaying.title == "" {
 			return m
 		}
@@ -15,26 +16,28 @@ func (m Model) handleBookmarkKey() Model {
 			Artist:  m.nowPlaying.artist,
 			Channel: m.nowPlaying.channel,
 		})
-		return m
-	}
-
-	switch m.mode {
-	case viewChannels:
-		if ch, ok := m.selectedChannel(); ok {
-			bookmarks.ToggleChannel(&m.cfg, ch.Title)
+	case focusChannels:
+		switch m.channelsFilter {
+		case filterAll:
+			if ch, ok := m.selectedChannel(); ok {
+				bookmarks.ToggleChannel(&m.cfg, ch.Title)
+			}
+		case filterBookmarked:
+			if m.channelSelected < len(m.cfg.BookmarkedChannels) {
+				bookmarks.ToggleChannel(&m.cfg, m.cfg.BookmarkedChannels[m.channelSelected])
+			}
 		}
-	case viewBookmarkedChannels:
-		if m.selected < len(m.cfg.BookmarkedChannels) {
-			bookmarks.ToggleChannel(&m.cfg, m.cfg.BookmarkedChannels[m.selected])
+	case focusTunes:
+		switch m.tunesMode {
+		case tunesHistory:
+			entries := m.hist.Entries()
+			if m.tuneSelected < len(entries) {
+				e := entries[m.tuneSelected]
+				bookmarks.AddTune(&m.cfg, config.BookmarkedTune{Title: e.Title, Artist: e.Artist, Channel: e.Channel})
+			}
+		case tunesBookmarked:
+			// already bookmarked; no-op
 		}
-	case viewHistory:
-		entries := m.hist.Entries()
-		if m.selected < len(entries) {
-			e := entries[m.selected]
-			bookmarks.AddTune(&m.cfg, config.BookmarkedTune{Title: e.Title, Artist: e.Artist, Channel: e.Channel})
-		}
-	case viewBookmarkedTunes:
-		// already bookmarked; no-op
 	}
 	return m
 }
