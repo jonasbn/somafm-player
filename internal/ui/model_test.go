@@ -40,54 +40,150 @@ func TestUpdate_QuitsOnQ(t *testing.T) {
 	}
 }
 
-func TestUpdate_JKMovesSelectionWithinBounds(t *testing.T) {
+func TestNew_DefaultsChannelsFilterToAllWhenNoBookmarks(t *testing.T) {
+	m := newTestModel() // config.DefaultConfig() has no BookmarkedChannels
+	if m.channelsFilter != filterAll {
+		t.Fatalf("channelsFilter = %v, want filterAll when no bookmarks exist", m.channelsFilter)
+	}
+}
+
+func TestNew_DefaultsChannelsFilterToBookmarkedWhenBookmarksExist(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.BookmarkedChannels = []string{"Groove Salad"}
+	chs := []channels.Channel{{Title: "Groove Salad"}, {Title: "Drone Zone"}}
+
+	m := New(cfg, chs, player.NewFakePlayer(), history.New(5))
+
+	if m.channelsFilter != filterBookmarked {
+		t.Fatalf("channelsFilter = %v, want filterBookmarked when bookmarks exist", m.channelsFilter)
+	}
+}
+
+func TestNew_DefaultsWidthTo80(t *testing.T) {
 	m := newTestModel()
+	if m.width != defaultWidth {
+		t.Fatalf("width = %d, want default %d", m.width, defaultWidth)
+	}
+}
+
+func TestUpdate_WindowSizeMsgStoresWidth(t *testing.T) {
+	m := newTestModel()
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = next.(Model)
+	if m.width != 120 {
+		t.Fatalf("width = %d after WindowSizeMsg, want 120", m.width)
+	}
+}
+
+func TestUpdate_TabCyclesThroughThreeFocusAreas(t *testing.T) {
+	m := newTestModel()
+	if m.focus != focusNowPlaying {
+		t.Fatalf("initial focus = %v, want focusNowPlaying", m.focus)
+	}
+
+	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = next.(Model)
+	if m.focus != focusChannels {
+		t.Fatalf("focus after tab = %v, want focusChannels", m.focus)
+	}
+
+	next, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = next.(Model)
+	if m.focus != focusTunes {
+		t.Fatalf("focus after second tab = %v, want focusTunes", m.focus)
+	}
+
+	next, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	m = next.(Model)
+	if m.focus != focusNowPlaying {
+		t.Fatalf("focus after third tab = %v, want focusNowPlaying", m.focus)
+	}
+}
+
+func TestUpdate_JKNoOpWhenNowPlayingFocused(t *testing.T) {
+	m := newTestModel() // default focus = focusNowPlaying
 
 	next, _ := m.Update(key("j"))
 	m = next.(Model)
-	if m.selected != 1 {
-		t.Fatalf("selected = %d after j, want 1", m.selected)
+	if m.channelSelected != 0 || m.tuneSelected != 0 {
+		t.Fatalf("channelSelected=%d tuneSelected=%d after j with NowPlaying focused, want both 0", m.channelSelected, m.tuneSelected)
+	}
+}
+
+func TestUpdate_JKMovesChannelSelectionWithinBounds(t *testing.T) {
+	m := newTestModel()
+	m.focus = focusChannels // filterAll by default -> 2 channels
+
+	next, _ := m.Update(key("j"))
+	m = next.(Model)
+	if m.channelSelected != 1 {
+		t.Fatalf("channelSelected = %d after j, want 1", m.channelSelected)
 	}
 
 	next, _ = m.Update(key("j")) // already at last item, should not overflow
 	m = next.(Model)
-	if m.selected != 1 {
-		t.Fatalf("selected = %d after second j at bottom, want clamped at 1", m.selected)
+	if m.channelSelected != 1 {
+		t.Fatalf("channelSelected = %d after second j at bottom, want clamped at 1", m.channelSelected)
 	}
 
 	next, _ = m.Update(key("k"))
 	m = next.(Model)
-	if m.selected != 0 {
-		t.Fatalf("selected = %d after k, want 0", m.selected)
+	if m.channelSelected != 0 {
+		t.Fatalf("channelSelected = %d after k, want 0", m.channelSelected)
 	}
 }
 
-func TestUpdate_PanelSwitchKeysChangeModeAndResetSelection(t *testing.T) {
+func TestUpdate_JKMovesTuneSelectionWithinBounds(t *testing.T) {
 	m := newTestModel()
-	m.selected = 1
+	m.focus = focusTunes
+	m.hist.Add(historyEntry("Song A", "Artist A", "Groove Salad"))
+	m.hist.Add(historyEntry("Song B", "Artist B", "Drone Zone"))
 
-	next, _ := m.Update(key("f"))
+	next, _ := m.Update(key("j"))
 	m = next.(Model)
-	if m.mode != viewBookmarkedChannels || m.selected != 0 {
-		t.Fatalf("after f: mode=%v selected=%d, want viewBookmarkedChannels/0", m.mode, m.selected)
+	if m.tuneSelected != 1 {
+		t.Fatalf("tuneSelected = %d after j, want 1", m.tuneSelected)
 	}
 
-	next, _ = m.Update(key("s"))
+	next, _ = m.Update(key("k"))
 	m = next.(Model)
-	if m.mode != viewBookmarkedTunes {
-		t.Fatalf("after s: mode=%v, want viewBookmarkedTunes", m.mode)
+	if m.tuneSelected != 0 {
+		t.Fatalf("tuneSelected = %d after k, want 0", m.tuneSelected)
+	}
+}
+
+func TestUpdate_AKeyTogglesChannelsFilterAndResetsSelection(t *testing.T) {
+	m := newTestModel() // no bookmarks => default filterAll
+	m.channelSelected = 1
+
+	next, _ := m.Update(key("a"))
+	m = next.(Model)
+	if m.channelsFilter != filterBookmarked || m.channelSelected != 0 {
+		t.Fatalf("after a: channelsFilter=%v channelSelected=%d, want filterBookmarked/0", m.channelsFilter, m.channelSelected)
 	}
 
+	next, _ = m.Update(key("a"))
+	m = next.(Model)
+	if m.channelsFilter != filterAll {
+		t.Fatalf("after second a: channelsFilter=%v, want filterAll", m.channelsFilter)
+	}
+}
+
+func TestUpdate_HAndSKeysSetTunesModeAndResetSelection(t *testing.T) {
+	m := newTestModel()
+	m.tuneSelected = 1
+
+	next, _ := m.Update(key("s"))
+	m = next.(Model)
+	if m.tunesMode != tunesBookmarked || m.tuneSelected != 0 {
+		t.Fatalf("after s: tunesMode=%v tuneSelected=%d, want tunesBookmarked/0", m.tunesMode, m.tuneSelected)
+	}
+
+	m.tuneSelected = 1
 	next, _ = m.Update(key("H"))
 	m = next.(Model)
-	if m.mode != viewHistory {
-		t.Fatalf("after H: mode=%v, want viewHistory", m.mode)
-	}
-
-	next, _ = m.Update(key("c"))
-	m = next.(Model)
-	if m.mode != viewChannels {
-		t.Fatalf("after c: mode=%v, want viewChannels", m.mode)
+	if m.tunesMode != tunesHistory || m.tuneSelected != 0 {
+		t.Fatalf("after H: tunesMode=%v tuneSelected=%d, want tunesHistory/0", m.tunesMode, m.tuneSelected)
 	}
 }
 
@@ -104,24 +200,5 @@ func TestNew_SyncsSavedVolumeAndMuteIntoPlayer(t *testing.T) {
 	}
 	if !fp.Muted() {
 		t.Fatal("player muted after New() = false, want true (from saved config)")
-	}
-}
-
-func TestUpdate_TabTogglesFocus(t *testing.T) {
-	m := newTestModel()
-	if m.focus != focusNowPlaying {
-		t.Fatalf("initial focus = %v, want focusNowPlaying", m.focus)
-	}
-
-	next, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
-	m = next.(Model)
-	if m.focus != focusList {
-		t.Fatalf("focus after tab = %v, want focusList", m.focus)
-	}
-
-	next, _ = m.Update(tea.KeyMsg{Type: tea.KeyTab})
-	m = next.(Model)
-	if m.focus != focusNowPlaying {
-		t.Fatalf("focus after second tab = %v, want focusNowPlaying", m.focus)
 	}
 }

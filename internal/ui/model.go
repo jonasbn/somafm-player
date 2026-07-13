@@ -11,21 +11,31 @@ import (
 	"github.com/jonasbn/somafm-player/internal/player"
 )
 
-type viewMode int
+type channelsFilter int
 
 const (
-	viewChannels viewMode = iota
-	viewBookmarkedChannels
-	viewBookmarkedTunes
-	viewHistory
+	filterBookmarked channelsFilter = iota
+	filterAll
+)
+
+type tunesMode int
+
+const (
+	tunesHistory tunesMode = iota
+	tunesBookmarked
 )
 
 type focusArea int
 
 const (
 	focusNowPlaying focusArea = iota
-	focusList
+	focusChannels
+	focusTunes
 )
+
+// defaultWidth is used before the terminal's first tea.WindowSizeMsg
+// arrives, so View() never renders against a zero width.
+const defaultWidth = 80
 
 type nowPlayingState struct {
 	title        string
@@ -41,9 +51,13 @@ type nowPlayingState struct {
 type Model struct {
 	cfg      config.Config
 	channels []channels.Channel
-	selected int
-	mode     viewMode
-	focus    focusArea
+
+	channelSelected int
+	tuneSelected    int
+	channelsFilter  channelsFilter
+	tunesMode       tunesMode
+	focus           focusArea
+	width           int
 
 	player player.Player
 	hist   *history.History
@@ -62,11 +76,19 @@ func New(cfg config.Config, chs []channels.Channel, p player.Player, hist *histo
 	// honors the user's saved settings instead of the player's own defaults.
 	p.SetVolume(cfg.Volume)
 	p.SetMuted(cfg.Muted)
+
+	filter := filterAll
+	if len(cfg.BookmarkedChannels) > 0 {
+		filter = filterBookmarked
+	}
+
 	return Model{
 		cfg:            cfg,
 		channels:       chs,
+		channelsFilter: filter,
 		player:         p,
 		hist:           hist,
+		width:          defaultWidth,
 		sessionStarted: time.Now(),
 	}
 }
@@ -92,35 +114,45 @@ func (m Model) WithStartupError(msg string) Model {
 	return m
 }
 
-func (m Model) currentListLen() int {
-	switch m.mode {
-	case viewChannels:
+func (m Model) channelsListLen() int {
+	if m.channelsFilter == filterAll {
 		return len(m.channels)
-	case viewBookmarkedChannels:
-		return len(m.cfg.BookmarkedChannels)
-	case viewBookmarkedTunes:
-		return len(m.cfg.BookmarkedTunes)
-	case viewHistory:
-		return len(m.hist.Entries())
 	}
-	return 0
+	return len(m.cfg.BookmarkedChannels)
 }
 
-func (m Model) switchMode(mode viewMode) Model {
-	m.mode = mode
-	m.selected = 0
+func (m Model) tunesListLen() int {
+	if m.tunesMode == tunesHistory {
+		return len(m.hist.Entries())
+	}
+	return len(m.cfg.BookmarkedTunes)
+}
+
+func (m Model) toggleChannelsFilter() Model {
+	if m.channelsFilter == filterAll {
+		m.channelsFilter = filterBookmarked
+	} else {
+		m.channelsFilter = filterAll
+	}
+	m.channelSelected = 0
+	return m
+}
+
+func (m Model) setTunesMode(mode tunesMode) Model {
+	m.tunesMode = mode
+	m.tuneSelected = 0
 	return m
 }
 
 func (m Model) selectedChannel() (channels.Channel, bool) {
-	switch m.mode {
-	case viewChannels:
-		if m.selected < len(m.channels) {
-			return m.channels[m.selected], true
+	switch m.channelsFilter {
+	case filterAll:
+		if m.channelSelected < len(m.channels) {
+			return m.channels[m.channelSelected], true
 		}
-	case viewBookmarkedChannels:
-		if m.selected < len(m.cfg.BookmarkedChannels) {
-			title := m.cfg.BookmarkedChannels[m.selected]
+	case filterBookmarked:
+		if m.channelSelected < len(m.cfg.BookmarkedChannels) {
+			title := m.cfg.BookmarkedChannels[m.channelSelected]
 			for _, ch := range m.channels {
 				if ch.Title == title {
 					return ch, true
@@ -133,12 +165,18 @@ func (m Model) selectedChannel() (channels.Channel, bool) {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		return m, nil
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyTab:
-			if m.focus == focusNowPlaying {
-				m.focus = focusList
-			} else {
+			switch m.focus {
+			case focusNowPlaying:
+				m.focus = focusChannels
+			case focusChannels:
+				m.focus = focusTunes
+			case focusTunes:
 				m.focus = focusNowPlaying
 			}
 			return m, nil
@@ -149,23 +187,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			_ = config.Save(m.cfg)
 			return m, tea.Quit
 		case "j", "down":
-			if n := m.currentListLen(); n > 0 && m.selected < n-1 {
-				m.selected++
+			switch m.focus {
+			case focusChannels:
+				if n := m.channelsListLen(); n > 0 && m.channelSelected < n-1 {
+					m.channelSelected++
+				}
+			case focusTunes:
+				if n := m.tunesListLen(); n > 0 && m.tuneSelected < n-1 {
+					m.tuneSelected++
+				}
 			}
 			return m, nil
 		case "k", "up":
-			if m.selected > 0 {
-				m.selected--
+			switch m.focus {
+			case focusChannels:
+				if m.channelSelected > 0 {
+					m.channelSelected--
+				}
+			case focusTunes:
+				if m.tuneSelected > 0 {
+					m.tuneSelected--
+				}
 			}
 			return m, nil
-		case "c":
-			return m.switchMode(viewChannels), nil
-		case "f":
-			return m.switchMode(viewBookmarkedChannels), nil
+		case "a":
+			return m.toggleChannelsFilter(), nil
 		case "s":
-			return m.switchMode(viewBookmarkedTunes), nil
+			return m.setTunesMode(tunesBookmarked), nil
 		case "H":
-			return m.switchMode(viewHistory), nil
+			return m.setTunesMode(tunesHistory), nil
 		case "enter":
 			if ch, ok := m.selectedChannel(); ok {
 				return m, resolveAndPlayCmd(ch)
