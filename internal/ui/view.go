@@ -123,7 +123,7 @@ func (m Model) View() string {
 	}
 	t := theme.Get(m.cfg.Theme)
 
-	footer := fmt.Sprintf("[Theme: %s]  tab focus · j/k move · enter play · b bookmark · c/f/s/H panels · +/- vol · m mute · t theme · q quit", t.Name)
+	footer := fmt.Sprintf("[Theme: %s]  tab focus · j/k move · enter play · b bookmark · c/f/s/H panels · +/- vol · m mute · t theme · r retry channels · q quit", t.Name)
 	if m.errMsg != "" {
 		footer = "Error: " + m.errMsg + "\n" + footer
 	}

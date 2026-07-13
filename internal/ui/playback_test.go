@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -102,6 +103,42 @@ func TestRecordCurrentTrackToHistory_SetsPlayedAtToNow(t *testing.T) {
 	}
 	if playedAt.Before(before) || playedAt.After(after) {
 		t.Fatalf("recorded entry PlayedAt = %v, want between %v and %v", playedAt, before, after)
+	}
+}
+
+func TestUpdate_ChannelsFetchedMsgUpdatesChannelsOnSuccess(t *testing.T) {
+	m := newTestModel()
+	newChs := []channels.Channel{{Title: "Deep Space One"}}
+
+	next, _ := m.Update(channelsFetchedMsg{channels: newChs})
+	m = next.(Model)
+
+	if len(m.channels) != 1 || m.channels[0].Title != "Deep Space One" {
+		t.Fatalf("channels = %+v, want [Deep Space One]", m.channels)
+	}
+	if m.errMsg != "" {
+		t.Fatalf("errMsg = %q, want empty after successful refetch", m.errMsg)
+	}
+}
+
+func TestUpdate_ChannelsFetchedMsgSetsErrMsgOnFailure(t *testing.T) {
+	m := newTestModel()
+	m.errMsg = ""
+
+	next, _ := m.Update(channelsFetchedMsg{err: errors.New("boom")})
+	m = next.(Model)
+
+	if m.errMsg != "boom" {
+		t.Fatalf("errMsg = %q, want %q", m.errMsg, "boom")
+	}
+}
+
+func TestUpdate_RKeyReturnsFetchChannelsCommand(t *testing.T) {
+	m := newTestModel()
+
+	_, cmd := m.Update(key("r"))
+	if cmd == nil {
+		t.Fatal("expected r to return a fetch-channels command")
 	}
 }
 

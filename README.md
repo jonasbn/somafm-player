@@ -63,6 +63,7 @@ go run .
 | `+`/`-` or arrows | volume up/down |
 | `m` | mute/unmute |
 | `t` | cycle theme |
+| `r` | retry fetching the channel list (e.g. after a startup network error) |
 | `q` | quit |
 
 Config, including bookmarks, volume, theme, and last-played channel, is stored at

@@ -12,6 +12,11 @@ import (
 	"strings"
 )
 
+// DefaultChannelsURL is SomaFM's live channel list endpoint. It is the single
+// source of truth for callers (main.go's startup fetch and the UI's retry
+// command) so there's only one place to update if it ever changes.
+const DefaultChannelsURL = "https://somafm.com/channels.json"
+
 type Playlist struct {
 	URL     string `json:"url"`
 	Format  string `json:"format"`

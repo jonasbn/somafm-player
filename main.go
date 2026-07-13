@@ -14,8 +14,6 @@ import (
 	"github.com/jonasbn/somafm-player/internal/ui"
 )
 
-const channelsURL = "https://somafm.com/channels.json"
-
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -23,7 +21,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	chs, fetchErr := channels.Fetch(context.Background(), channelsURL)
+	chs, fetchErr := channels.Fetch(context.Background(), channels.DefaultChannelsURL)
 
 	m := ui.New(cfg, chs, player.NewRealPlayer(), history.New(5))
 	if fetchErr != nil {

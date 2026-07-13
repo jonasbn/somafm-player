@@ -83,6 +83,15 @@ func (m Model) handlePlaybackMsg(msg tea.Msg) (Model, tea.Cmd) {
 	case player.ReconnectedMsg:
 		m.nowPlaying.connected = true
 		return m, nil
+
+	case channelsFetchedMsg:
+		if msg.err != nil {
+			m.errMsg = msg.err.Error()
+			return m, nil
+		}
+		m.channels = msg.channels
+		m.errMsg = ""
+		return m, nil
 	}
 	return m, nil
 }
