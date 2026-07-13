@@ -172,10 +172,3 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	return m.handlePlaybackMsg(msg)
 }
-
-func (m Model) View() string {
-	if m.quitting {
-		return ""
-	}
-	return "somafm-player\n"
-}
