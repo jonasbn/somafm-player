@@ -1,6 +1,8 @@
 package ui
 
 import (
+	"strings"
+
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lucasb-eyer/go-colorful"
 
@@ -92,4 +94,14 @@ func gradientColor(v float64, t theme.Theme) lipgloss.Color {
 		c = mid.BlendLab(hi, (v-0.5)/0.5)
 	}
 	return lipgloss.Color(c.Hex())
+}
+
+func (m Model) renderVisualizerBox(t theme.Theme, width int) string {
+	bars := resampleBands(m.bands, displayBarCount(width))
+	var sb strings.Builder
+	for _, v := range bars {
+		style := lipgloss.NewStyle().Foreground(gradientColor(v, t))
+		sb.WriteString(style.Render(string(barChar(v))))
+	}
+	return borderStyle(t, false).Width(width).Render(sb.String())
 }

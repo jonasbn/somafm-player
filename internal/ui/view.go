@@ -149,6 +149,21 @@ func (m Model) boxWidth() int {
 	return usable / 2
 }
 
+// fullBoxWidth returns the available width for a single full-width box
+// (unlike boxWidth, which splits the width between two side-by-side
+// boxes). Falls back to defaultWidth before the first tea.WindowSizeMsg.
+func (m Model) fullBoxWidth() int {
+	w := m.width
+	if w <= 0 {
+		w = defaultWidth
+	}
+	usable := w - decorationPerBox
+	if usable < 2 {
+		usable = 2
+	}
+	return usable
+}
+
 func (m Model) View() string {
 	if m.quitting {
 		return ""
@@ -158,14 +173,17 @@ func (m Model) View() string {
 	width := m.boxWidth()
 	lists := lipgloss.JoinHorizontal(lipgloss.Top, m.renderChannelsBox(t, width), m.renderTunesBox(t, width))
 
-	footer := fmt.Sprintf("[Theme: %s]  tab focus · j/k move · enter play · b bookmark · a all/bookmarked · H/s tunes · +/- vol · m mute · t theme · r retry channels · q quit", t.Name)
+	sections := []string{m.renderNowPlaying(t)}
+	if m.cfg.VisualizerEnabled {
+		sections = append(sections, m.renderVisualizerBox(t, m.fullBoxWidth()))
+	}
+	sections = append(sections, lists)
+
+	footer := fmt.Sprintf("[Theme: %s]  tab focus · j/k move · enter play · b bookmark · a all/bookmarked · H/s tunes · +/- vol · m mute · t theme · v visualizer · r retry channels · q quit", t.Name)
 	if m.errMsg != "" {
 		footer = "Error: " + m.errMsg + "\n" + footer
 	}
+	sections = append(sections, footer)
 
-	return strings.Join([]string{
-		m.renderNowPlaying(t),
-		lists,
-		footer,
-	}, "\n")
+	return strings.Join(sections, "\n")
 }

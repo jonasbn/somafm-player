@@ -111,6 +111,47 @@ func TestBoxWidth_FallsBackToDefaultWidthWhenZero(t *testing.T) {
 	}
 }
 
+func TestFullBoxWidth_SubtractsSingleBoxDecorationOnly(t *testing.T) {
+	m := newTestModel()
+	m.width = 100
+
+	got := m.fullBoxWidth()
+
+	// 100 total - 4 (border+padding decoration for one box) = 96
+	if got != 96 {
+		t.Fatalf("fullBoxWidth() = %d, want 96 for a 100-column terminal", got)
+	}
+}
+
+func TestView_HidesVisualizerBoxByDefault(t *testing.T) {
+	m := newTestModel() // config.DefaultConfig() has VisualizerEnabled=false
+	out := m.View()
+	// Deliberately excludes '█' (U+2588 FULL BLOCK): renderVolumeBar's
+	// filled-volume glyph in the Now Playing box already uses '█'
+	// unconditionally (config.DefaultConfig().Volume=80 renders 8 of them),
+	// so including it here produces a false positive unrelated to the
+	// visualizer. '▁'-'▇' are exclusive to renderVisualizerBox/barChar.
+	if strings.ContainsAny(out, "▁▂▃▄▅▆▇") {
+		t.Fatalf("View() output contains visualizer bar characters while disabled:\n%s", out)
+	}
+}
+
+func TestView_ShowsVisualizerBoxWhenEnabled(t *testing.T) {
+	m := newTestModel()
+	m.cfg.VisualizerEnabled = true
+	out := m.View()
+	if !strings.ContainsAny(out, "▁▂▃▄▅▆▇█") {
+		t.Fatalf("View() output missing visualizer bar characters while enabled:\n%s", out)
+	}
+}
+
+func TestView_FooterMentionsVisualizerKey(t *testing.T) {
+	m := newTestModel()
+	if got := m.View(); !strings.Contains(got, "v visualizer") {
+		t.Fatalf("View() footer missing 'v visualizer' hint:\n%s", got)
+	}
+}
+
 func TestView_DoesNotPanicWhenQuitting(t *testing.T) {
 	m := newTestModel()
 	m.quitting = true
