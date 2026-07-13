@@ -153,11 +153,50 @@ func (p *RealPlayer) run(ctx context.Context, streamURL string) {
 	}
 }
 
+// openResult carries the outcome of an in-flight shoutcast.Open call back
+// to playOnce over a channel, so the open can be raced against ctx.Done().
+type openResult struct {
+	stream *shoutcast.Stream
+	err    error
+}
+
 func (p *RealPlayer) playOnce(ctx context.Context, streamURL string) error {
-	stream, err := shoutcast.Open(streamURL)
-	if err != nil {
-		return err
+	resultCh := make(chan openResult, 1)
+	go func() {
+		s, err := shoutcast.Open(streamURL)
+		resultCh <- openResult{stream: s, err: err}
+	}()
+
+	var stream *shoutcast.Stream
+	select {
+	case res := <-resultCh:
+		if res.err != nil {
+			return res.err
+		}
+		stream = res.stream
+	case <-ctx.Done():
+		// A newer Play/Stop call superseded us while Open was still in
+		// flight. Open takes no context and can't be canceled directly,
+		// so let it finish in the background and close whatever stream
+		// it returns rather than leaking the connection.
+		go func() {
+			res := <-resultCh
+			if res.stream != nil {
+				res.stream.Close()
+			}
+		}()
+		return nil
 	}
+
+	if ctx.Err() != nil {
+		// Superseded while Open was in flight, but Open succeeded before
+		// we noticed. Tear down the stream we just opened without
+		// touching p.stream, building the decoder/oto context, or
+		// sending ReconnectedMsg.
+		stream.Close()
+		return nil
+	}
+
 	p.mu.Lock()
 	p.stream = stream
 	p.mu.Unlock()
