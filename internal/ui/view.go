@@ -47,9 +47,10 @@ func (m Model) renderNowPlaying(t theme.Theme) string {
 }
 
 func (m Model) renderVolumeBar() string {
-	filled := m.cfg.Volume / 10
+	vol := clampVolume(m.cfg.Volume)
+	filled := vol / 10
 	bar := strings.Repeat("█", filled) + strings.Repeat("░", 10-filled)
-	label := fmt.Sprintf("Vol: %s %d%%", bar, m.cfg.Volume)
+	label := fmt.Sprintf("Vol: %s %d%%", bar, vol)
 	if m.cfg.Muted {
 		label += " (muted)"
 	}
