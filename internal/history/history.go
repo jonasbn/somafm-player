@@ -26,5 +26,7 @@ func (h *History) Add(e Entry) {
 }
 
 func (h *History) Entries() []Entry {
-	return h.entries
+	out := make([]Entry, len(h.entries))
+	copy(out, h.entries)
+	return out
 }
