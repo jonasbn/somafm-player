@@ -34,3 +34,18 @@ func (m Model) handleTick(now time.Time) Model {
 	}
 	return m
 }
+
+const visualizerTickInterval = 50 * time.Millisecond
+
+type visualizerTickMsg time.Time
+
+func visualizerTickCmd() tea.Cmd {
+	return tea.Tick(visualizerTickInterval, func(t time.Time) tea.Msg {
+		return visualizerTickMsg(t)
+	})
+}
+
+func (m Model) handleVisualizerTick() Model {
+	m.bands = m.player.Spectrum()
+	return m
+}

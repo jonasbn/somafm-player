@@ -63,6 +63,7 @@ type Model struct {
 	hist   *history.History
 
 	nowPlaying nowPlayingState
+	bands      []float64
 	errMsg     string
 	quitting   bool
 
@@ -95,6 +96,9 @@ func New(cfg config.Config, chs []channels.Channel, p player.Player, hist *histo
 
 func (m Model) Init() tea.Cmd {
 	cmds := []tea.Cmd{waitForPlayerMsg(m.player), tickCmd()}
+	if m.cfg.VisualizerEnabled {
+		cmds = append(cmds, visualizerTickCmd())
+	}
 	if m.cfg.LastChannel != "" {
 		for _, ch := range m.channels {
 			if ch.Title == m.cfg.LastChannel {
@@ -238,6 +242,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if t, ok := msg.(tickMsg); ok {
 		return m.handleTick(time.Time(t)), tickCmd()
+	}
+
+	if _, ok := msg.(visualizerTickMsg); ok {
+		if !m.cfg.VisualizerEnabled {
+			return m, nil
+		}
+		return m.handleVisualizerTick(), visualizerTickCmd()
 	}
 
 	switch msg.(type) {

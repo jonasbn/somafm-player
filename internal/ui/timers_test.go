@@ -38,3 +38,14 @@ func TestUpdate_TickMsgUpdatesElapsedAndSession(t *testing.T) {
 		t.Fatalf("session = %q, want 1:30", m.session)
 	}
 }
+
+func TestHandleVisualizerTick_PullsBandsFromPlayer(t *testing.T) {
+	m := newTestModel() // FakePlayer.Spectrum() always returns nil
+	m.bands = []float64{0.9, 0.9}
+
+	m = m.handleVisualizerTick()
+
+	if m.bands != nil {
+		t.Fatalf("bands = %v, want nil (pulled from FakePlayer.Spectrum())", m.bands)
+	}
+}

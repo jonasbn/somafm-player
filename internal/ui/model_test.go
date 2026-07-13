@@ -2,6 +2,7 @@ package ui
 
 import (
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jonasbn/somafm-player/internal/channels"
@@ -184,6 +185,58 @@ func TestUpdate_HAndSKeysSetTunesModeAndResetSelection(t *testing.T) {
 	m = next.(Model)
 	if m.tunesMode != tunesHistory || m.tuneSelected != 0 {
 		t.Fatalf("after H: tunesMode=%v tuneSelected=%d, want tunesHistory/0", m.tunesMode, m.tuneSelected)
+	}
+}
+
+func TestUpdate_VisualizerTickMsgReschedulesWhenEnabled(t *testing.T) {
+	m := newTestModel()
+	m.cfg.VisualizerEnabled = true
+
+	_, cmd := m.Update(visualizerTickMsg(time.Now()))
+	if cmd == nil {
+		t.Fatal("expected a reschedule cmd when visualizer is enabled")
+	}
+}
+
+func TestUpdate_VisualizerTickMsgNoOpAndNoRescheduleWhenDisabled(t *testing.T) {
+	m := newTestModel()
+	m.cfg.VisualizerEnabled = false
+	m.bands = []float64{0.5}
+
+	next, cmd := m.Update(visualizerTickMsg(time.Now()))
+	m = next.(Model)
+
+	if len(m.bands) != 1 {
+		t.Fatalf("bands = %v, want unchanged when disabled", m.bands)
+	}
+	if cmd != nil {
+		t.Fatal("expected no reschedule cmd when visualizer is disabled")
+	}
+}
+
+func TestInit_SchedulesVisualizerTickWhenEnabledInConfig(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.VisualizerEnabled = true
+	m := New(cfg, nil, player.NewFakePlayer(), history.New(5))
+
+	batch, ok := m.Init()().(tea.BatchMsg)
+	if !ok {
+		t.Fatalf("Init()() = %T, want tea.BatchMsg", m.Init()())
+	}
+	if len(batch) != 3 {
+		t.Fatalf("len(batch) = %d, want 3 (waitForPlayerMsg, tickCmd, visualizerTickCmd)", len(batch))
+	}
+}
+
+func TestInit_DoesNotScheduleVisualizerTickWhenDisabled(t *testing.T) {
+	m := newTestModel() // VisualizerEnabled=false by default
+
+	batch, ok := m.Init()().(tea.BatchMsg)
+	if !ok {
+		t.Fatalf("Init()() = %T, want tea.BatchMsg", m.Init()())
+	}
+	if len(batch) != 2 {
+		t.Fatalf("len(batch) = %d, want 2 (waitForPlayerMsg, tickCmd)", len(batch))
 	}
 }
 
