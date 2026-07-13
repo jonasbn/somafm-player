@@ -59,7 +59,7 @@ func New(cfg config.Config, chs []channels.Channel, p player.Player, hist *histo
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return waitForPlayerMsg(m.player)
 }
 
 func (m Model) currentListLen() int {
@@ -80,6 +80,25 @@ func (m Model) switchMode(mode viewMode) Model {
 	m.mode = mode
 	m.selected = 0
 	return m
+}
+
+func (m Model) selectedChannel() (channels.Channel, bool) {
+	switch m.mode {
+	case viewChannels:
+		if m.selected < len(m.channels) {
+			return m.channels[m.selected], true
+		}
+	case viewBookmarkedChannels:
+		if m.selected < len(m.cfg.BookmarkedChannels) {
+			title := m.cfg.BookmarkedChannels[m.selected]
+			for _, ch := range m.channels {
+				if ch.Title == title {
+					return ch, true
+				}
+			}
+		}
+	}
+	return channels.Channel{}, false
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -116,9 +135,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.switchMode(viewBookmarkedTunes), nil
 		case "H":
 			return m.switchMode(viewHistory), nil
+		case "enter":
+			if ch, ok := m.selectedChannel(); ok {
+				return m, resolveAndPlayCmd(ch)
+			}
+			return m, nil
 		}
 	}
-	return m, nil
+
+	switch msg.(type) {
+	case player.TrackChangedMsg, player.ConnectionLostMsg, player.ReconnectedMsg:
+		next, cmd := m.handlePlaybackMsg(msg)
+		return next, tea.Batch(cmd, waitForPlayerMsg(m.player))
+	}
+	return m.handlePlaybackMsg(msg)
 }
 
 func (m Model) View() string {
