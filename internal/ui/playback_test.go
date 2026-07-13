@@ -2,6 +2,7 @@ package ui
 
 import (
 	"testing"
+	"time"
 
 	"github.com/jonasbn/somafm-player/internal/channels"
 	"github.com/jonasbn/somafm-player/internal/config"
@@ -80,6 +81,27 @@ func TestUpdate_TrackChangedMsgRecordsPreviousTrackToHistory(t *testing.T) {
 	entries := m.hist.Entries()
 	if len(entries) != 1 || entries[0].Title != "Old Track" {
 		t.Fatalf("history entries = %+v, want the previous track recorded", entries)
+	}
+}
+
+func TestRecordCurrentTrackToHistory_SetsPlayedAtToNow(t *testing.T) {
+	m := newTestModel()
+	m.nowPlaying = nowPlayingState{title: "Track", artist: "Artist", channel: "Channel"}
+
+	before := time.Now()
+	m = m.recordCurrentTrackToHistory()
+	after := time.Now()
+
+	entries := m.hist.Entries()
+	if len(entries) != 1 {
+		t.Fatalf("history entries = %+v, want 1 entry", entries)
+	}
+	playedAt := entries[0].PlayedAt
+	if playedAt.IsZero() {
+		t.Fatal("recorded entry PlayedAt is zero value, want time.Now() at record time")
+	}
+	if playedAt.Before(before) || playedAt.After(after) {
+		t.Fatalf("recorded entry PlayedAt = %v, want between %v and %v", playedAt, before, after)
 	}
 }
 

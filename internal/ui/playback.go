@@ -40,9 +40,10 @@ func (m Model) recordCurrentTrackToHistory() Model {
 		return m
 	}
 	m.hist.Add(history.Entry{
-		Title:   m.nowPlaying.title,
-		Artist:  m.nowPlaying.artist,
-		Channel: m.nowPlaying.channel,
+		Title:    m.nowPlaying.title,
+		Artist:   m.nowPlaying.artist,
+		Channel:  m.nowPlaying.channel,
+		PlayedAt: time.Now(),
 	})
 	return m
 }
