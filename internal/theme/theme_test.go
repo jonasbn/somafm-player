@@ -37,3 +37,18 @@ func TestGet_AllOrderNamesResolve(t *testing.T) {
 		}
 	}
 }
+
+func TestThemes_AllHaveDistinctHotColor(t *testing.T) {
+	for _, name := range Order {
+		th := Get(name)
+		if th.Hot == "" {
+			t.Errorf("%s: Hot color is empty", name)
+		}
+		if th.Hot == th.Accent {
+			t.Errorf("%s: Hot (%s) must differ from Accent (%s)", name, th.Hot, th.Accent)
+		}
+		if th.Hot == th.Muted {
+			t.Errorf("%s: Hot (%s) must differ from Muted (%s)", name, th.Hot, th.Muted)
+		}
+	}
+}
