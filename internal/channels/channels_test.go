@@ -111,6 +111,7 @@ func TestResolveStreamURL_ParsesFile1FromPLS(t *testing.T) {
 func TestFetch_NonOKStatusReturnsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(sampleChannelsJSON))
 	}))
 	defer srv.Close()
 
@@ -135,6 +136,7 @@ func TestResolveStreamURL_MalformedPLSReturnsError(t *testing.T) {
 func TestResolveStreamURL_NonOKStatusReturnsError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(samplePLS))
 	}))
 	defer srv.Close()
 
