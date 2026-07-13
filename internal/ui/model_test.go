@@ -32,6 +32,7 @@ func historyEntry(title, artist, channel string) history.Entry {
 }
 
 func TestUpdate_QuitsOnQ(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	m := newTestModel()
 	_, cmd := m.Update(key("q"))
 	if cmd == nil || cmd().(tea.QuitMsg) != (tea.QuitMsg{}) {
