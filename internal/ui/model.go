@@ -148,6 +148,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, resolveAndPlayCmd(ch)
 			}
 			return m, nil
+		case "+", "right":
+			return m.adjustVolume(5), nil
+		case "-", "left":
+			return m.adjustVolume(-5), nil
+		case "m":
+			return m.toggleMute(), nil
 		}
 	}
 

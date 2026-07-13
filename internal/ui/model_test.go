@@ -18,6 +18,11 @@ func newTestModel() Model {
 	return New(config.DefaultConfig(), chs, player.NewFakePlayer(), history.New(5))
 }
 
+func newTestModelWithPlayer(p player.Player) Model {
+	chs := []channels.Channel{{Title: "Groove Salad"}, {Title: "Drone Zone"}}
+	return New(config.DefaultConfig(), chs, p, history.New(5))
+}
+
 func key(s string) tea.KeyMsg {
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
 }
