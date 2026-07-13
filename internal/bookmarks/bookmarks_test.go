@@ -31,3 +31,16 @@ func TestAddTune_DedupesBySameTitleArtistChannel(t *testing.T) {
 		t.Fatalf("BookmarkedTunes has %d entries, want 1 (deduped)", len(cfg.BookmarkedTunes))
 	}
 }
+
+func TestAddTune_DoesNotDedupeDifferentChannel(t *testing.T) {
+	cfg := config.Config{}
+	tune1 := config.BookmarkedTune{Title: "Track", Artist: "Artist", Channel: "Drone Zone"}
+	tune2 := config.BookmarkedTune{Title: "Track", Artist: "Artist", Channel: "Groove Salad"}
+
+	AddTune(&cfg, tune1)
+	AddTune(&cfg, tune2)
+
+	if len(cfg.BookmarkedTunes) != 2 {
+		t.Fatalf("BookmarkedTunes has %d entries, want 2 (not deduped)", len(cfg.BookmarkedTunes))
+	}
+}
