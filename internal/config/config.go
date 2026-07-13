@@ -21,6 +21,7 @@ type Config struct {
 	Theme              string           `json:"theme"`
 	BookmarkedChannels []string         `json:"bookmarkedChannels"`
 	BookmarkedTunes    []BookmarkedTune `json:"bookmarkedTunes"`
+	VisualizerEnabled  bool             `json:"visualizerEnabled"`
 }
 
 func DefaultConfig() Config {

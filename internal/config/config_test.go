@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+func TestDefaultConfig_VisualizerDisabledByDefault(t *testing.T) {
+	if DefaultConfig().VisualizerEnabled {
+		t.Fatal("DefaultConfig().VisualizerEnabled = true, want false (opt-in feature)")
+	}
+}
+
 func TestSaveThenLoad_RoundTrips(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
@@ -19,6 +25,7 @@ func TestSaveThenLoad_RoundTrips(t *testing.T) {
 		BookmarkedTunes: []BookmarkedTune{
 			{Title: "Track", Artist: "Artist", Channel: "Drone Zone", BookmarkedAt: time.Date(2026, 7, 13, 10, 0, 0, 0, time.UTC)},
 		},
+		VisualizerEnabled: true,
 	}
 
 	if err := Save(cfg); err != nil {
@@ -31,6 +38,9 @@ func TestSaveThenLoad_RoundTrips(t *testing.T) {
 	}
 	if loaded.LastChannel != cfg.LastChannel || loaded.Volume != cfg.Volume || loaded.Theme != cfg.Theme {
 		t.Fatalf("loaded config %+v does not match saved config %+v", loaded, cfg)
+	}
+	if loaded.VisualizerEnabled != cfg.VisualizerEnabled {
+		t.Fatalf("loaded.VisualizerEnabled = %v, want %v", loaded.VisualizerEnabled, cfg.VisualizerEnabled)
 	}
 	if len(loaded.BookmarkedChannels) != 2 || len(loaded.BookmarkedTunes) != 1 {
 		t.Fatalf("loaded config lists did not round-trip: %+v", loaded)
