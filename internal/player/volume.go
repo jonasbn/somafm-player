@@ -6,8 +6,10 @@ import (
 )
 
 type volumeReader struct {
-	src    io.Reader
-	factor func() float64
+	src      io.Reader
+	factor   func() float64
+	carry    byte
+	hasCarry bool
 }
 
 func newVolumeReader(src io.Reader, factor func() float64) *volumeReader {
@@ -15,16 +17,31 @@ func newVolumeReader(src io.Reader, factor func() float64) *volumeReader {
 }
 
 func (r *volumeReader) Read(p []byte) (int, error) {
-	n, err := r.src.Read(p)
-	if n == 0 {
-		return n, err
+	offset := 0
+	if r.hasCarry {
+		if len(p) == 0 {
+			return 0, nil
+		}
+		p[0] = r.carry
+		offset = 1
+		r.hasCarry = false
 	}
+
+	n, err := r.src.Read(p[offset:])
+	total := offset + n
+	usable := total - (total % 2)
+
 	v := r.factor()
-	usable := n - (n % 2)
 	for i := 0; i < usable; i += 2 {
 		sample := int16(binary.LittleEndian.Uint16(p[i : i+2]))
 		scaled := int16(float64(sample) * v)
 		binary.LittleEndian.PutUint16(p[i:i+2], uint16(scaled))
 	}
-	return n, err
+
+	if total > usable {
+		r.carry = p[usable]
+		r.hasCarry = true
+	}
+
+	return usable, err
 }

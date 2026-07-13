@@ -53,3 +53,60 @@ func TestVolumeReader_ZeroFactorSilences(t *testing.T) {
 		}
 	}
 }
+
+// chunkedReader deliberately returns data in fixed-size (potentially odd
+// relative to sample boundaries) chunks across multiple Read calls, unlike
+// bytes.Reader which returns everything available in a single Read. This
+// lets tests force an odd-length Read followed by a subsequent Read, to
+// exercise carry-over logic across the volumeReader.Read call boundary.
+type chunkedReader struct {
+	data  []byte
+	pos   int
+	chunk int
+}
+
+func (r *chunkedReader) Read(p []byte) (int, error) {
+	if r.pos >= len(r.data) {
+		return 0, io.EOF
+	}
+	n := r.chunk
+	if n > len(p) {
+		n = len(p)
+	}
+	if r.pos+n > len(r.data) {
+		n = len(r.data) - r.pos
+	}
+	copy(p, r.data[r.pos:r.pos+n])
+	r.pos += n
+	return n, nil
+}
+
+func TestVolumeReader_CarriesOddByteAcrossReads(t *testing.T) {
+	data := samplesToBytes([]int16{1000, -1000, 2000})
+	src := &chunkedReader{data: data, chunk: 3}
+	vr := newVolumeReader(src, func() float64 { return 0.5 })
+
+	out1 := make([]byte, 64)
+	n1, err := vr.Read(out1)
+	if err != nil && err != io.EOF {
+		t.Fatalf("first Read returned error: %v", err)
+	}
+
+	out2 := make([]byte, 64)
+	n2, err := vr.Read(out2)
+	if err != nil && err != io.EOF {
+		t.Fatalf("second Read returned error: %v", err)
+	}
+
+	got := append(append([]byte{}, out1[:n1]...), out2[:n2]...)
+	want := samplesToBytes([]int16{500, -500, 1000})
+
+	if len(got) != len(want) {
+		t.Fatalf("reconstructed %d bytes, want %d (out1=%d bytes, out2=%d bytes)", len(got), len(want), n1, n2)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("byte[%d] = %d, want %d (got=%v, want=%v)", i, got[i], want[i], got, want)
+		}
+	}
+}
