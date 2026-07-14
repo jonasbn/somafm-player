@@ -143,7 +143,7 @@ func TestSplitMirroredLevels_ClampsOutOfRangeInput(t *testing.T) {
 func TestRenderVisualizerBox_RendersFourMirroredContentRows(t *testing.T) {
 	m := newTestModel()
 	m.bands = []float64{0.9, 0.1, 0.5, 0.9, 0.1, 0.5, 0.9, 0.1}
-	out := m.renderVisualizerBox(theme.Get("Nord"), 8)
+	out := m.renderVisualizerBox(theme.Get("Nord"), 20)
 
 	lines := strings.Split(out, "\n")
 	if len(lines) != 6 { // top border + 4 content rows + bottom border
@@ -154,7 +154,7 @@ func TestRenderVisualizerBox_RendersFourMirroredContentRows(t *testing.T) {
 func TestRenderVisualizerBox_TopAndBottomRowsMirrorEachOther(t *testing.T) {
 	m := newTestModel()
 	m.bands = []float64{0.9, 0.1, 0.5, 0.9, 0.1, 0.5, 0.9, 0.1}
-	out := m.renderVisualizerBox(theme.Get("Nord"), 8)
+	out := m.renderVisualizerBox(theme.Get("Nord"), 20)
 
 	lines := strings.Split(out, "\n")
 	// lines[0]=top border, lines[1]=outer-above, lines[2]=inner-above,
@@ -164,5 +164,17 @@ func TestRenderVisualizerBox_TopAndBottomRowsMirrorEachOther(t *testing.T) {
 	}
 	if lines[2] != lines[3] {
 		t.Fatalf("inner rows do not mirror:\n top=%q\n bottom=%q", lines[2], lines[3])
+	}
+}
+
+func TestRenderVisualizerBox_RenderedWidthMatchesCallerRequest(t *testing.T) {
+	m := newTestModel()
+	m.bands = []float64{0.9, 0.1, 0.5, 0.9, 0.1, 0.5, 0.9, 0.1}
+	for _, width := range []int{20, 40} {
+		out := m.renderVisualizerBox(theme.Get("Nord"), width)
+		lines := strings.Split(out, "\n")
+		if got := len([]rune(lines[0])); got != width+2 {
+			t.Errorf("renderVisualizerBox(width=%d) top border rune-width = %d, want %d (width+2 for the border)", width, got, width+2)
+		}
 	}
 }

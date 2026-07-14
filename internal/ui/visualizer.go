@@ -130,7 +130,12 @@ func splitMirroredLevels(v float64) (inner rune, outer rune, innerFilled bool, o
 }
 
 func (m Model) renderVisualizerBox(t theme.Theme, width int) string {
-	bars := resampleBands(m.bands, displayBarCount(width))
+	// borderStyle's Padding(0, 1) consumes 2 columns from lipgloss's
+	// Width() budget (verified: Style.Width() budgets padding inside the
+	// given width, not outside it) — subtract it before sizing bar count,
+	// or content overflows the budget and wraps onto extra lines.
+	const horizontalPadding = 2
+	bars := resampleBands(m.bands, displayBarCount(width-horizontalPadding))
 
 	var innerRow, outerRow strings.Builder
 	for _, v := range bars {
@@ -151,6 +156,5 @@ func (m Model) renderVisualizerBox(t theme.Theme, width int) string {
 	inner := innerRow.String()
 	outer := outerRow.String()
 	body := strings.Join([]string{outer, inner, inner, outer}, "\n")
-	s := borderStyle(t, false)
-	return s.Render(body)
+	return borderStyle(t, false).Width(width).Render(body)
 }
