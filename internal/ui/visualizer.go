@@ -26,6 +26,17 @@ const minSideBySideVisualizerWidth = minDisplayBars + 2
 
 var barLevels = []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
 
+// upperBarLevels is barLevels' top-anchored counterpart: where barLevels'
+// glyphs fill from the bottom of their cell upward, these fill from the
+// top downward. The classic Block Elements set only defines two
+// top-anchored fractions (▔ 1/8 and ▀ 4/8); the rest (🮂🮃🮄🮅🮆) come from
+// the newer "Symbols for Legacy Computing" block (Unicode 13+, U+1FB82-
+// U+1FB86) — used for the mirrored waveform's below-center rows so a
+// partial value visually grows away from the center line, the same way
+// barLevels does for the above-center rows, instead of reusing
+// barLevels there and just duplicating the above-center shape.
+var upperBarLevels = []rune{'▔', '🮂', '🮃', '▀', '🮄', '🮅', '🮆', '█'}
+
 // displayBarCount clamps width to [minDisplayBars, maxDisplayBars].
 func displayBarCount(width int) int {
 	n := width
@@ -80,6 +91,18 @@ func barChar(v float64) rune {
 	return barLevels[idx]
 }
 
+// upperBarChar is barChar's top-anchored counterpart — see upperBarLevels.
+func upperBarChar(v float64) rune {
+	if v < 0 {
+		v = 0
+	}
+	if v > 1 {
+		v = 1
+	}
+	idx := int(v*float64(len(upperBarLevels)-1) + 0.5)
+	return upperBarLevels[idx]
+}
+
 // gradientColor interpolates a bar's color across three stops — Muted (0),
 // Accent (0.5), Hot (1) — using perceptual Lab blending so the transition
 // reads as smooth rather than muddy.
@@ -105,13 +128,18 @@ func gradientColor(v float64, t theme.Theme) lipgloss.Color {
 
 // splitMirroredLevels maps a 0.0-1.0 band value onto the mirrored waveform
 // display's two rows per side: the inner row (touching the implicit center
-// line) fills first for v in [0, 0.5] via barChar(v*2); once maxed, the
-// outer row fills for the remainder, v in [0.5, 1.0], via
-// barChar((v-0.5)*2). innerFilled/outerFilled report whether each row
-// should render a glyph at all — v==0 renders both rows blank so silence
-// reads as empty space rather than the flat baseline glyph barChar(0)
-// would otherwise produce.
-func splitMirroredLevels(v float64) (inner rune, outer rune, innerFilled bool, outerFilled bool) {
+// line) fills first for v in [0, 0.5]; once maxed, the outer row fills for
+// the remainder, v in [0.5, 1.0]. It returns fill FRACTIONS (0.0-1.0)
+// rather than glyphs, since the same fraction renders as a different glyph
+// depending on which side of the center line it's drawn on — barChar
+// (bottom-anchored) above, upperBarChar (top-anchored) below — so a
+// partial value visually grows away from center on both sides instead of
+// the below side just duplicating the above side's shape.
+// innerFilled/outerFilled report whether each row should render a glyph at
+// all — v==0 reports both rows unfilled so silence reads as empty space
+// rather than the flat baseline glyph a fraction of 0 would otherwise
+// produce.
+func splitMirroredLevels(v float64) (inner float64, outer float64, innerFilled bool, outerFilled bool) {
 	if v < 0 {
 		v = 0
 	}
@@ -121,11 +149,14 @@ func splitMirroredLevels(v float64) (inner rune, outer rune, innerFilled bool, o
 	if v == 0 {
 		return 0, 0, false, false
 	}
-	inner = barChar(v * 2)
+	inner = v * 2
+	if inner > 1 {
+		inner = 1
+	}
 	if v <= 0.5 {
 		return inner, 0, true, false
 	}
-	outer = barChar((v - 0.5) * 2)
+	outer = (v - 0.5) * 2
 	return inner, outer, true, true
 }
 
@@ -137,24 +168,27 @@ func (m Model) renderVisualizerBox(t theme.Theme, width int) string {
 	const horizontalPadding = 2
 	bars := resampleBands(m.bands, displayBarCount(width-horizontalPadding))
 
-	var innerRow, outerRow strings.Builder
+	var innerAbove, outerAbove, innerBelow, outerBelow strings.Builder
 	for _, v := range bars {
 		style := lipgloss.NewStyle().Foreground(gradientColor(v, t))
 		inner, outer, innerFilled, outerFilled := splitMirroredLevels(v)
+
 		if innerFilled {
-			innerRow.WriteString(style.Render(string(inner)))
+			innerAbove.WriteString(style.Render(string(barChar(inner))))
+			innerBelow.WriteString(style.Render(string(upperBarChar(inner))))
 		} else {
-			innerRow.WriteString(" ")
+			innerAbove.WriteString(" ")
+			innerBelow.WriteString(" ")
 		}
 		if outerFilled {
-			outerRow.WriteString(style.Render(string(outer)))
+			outerAbove.WriteString(style.Render(string(barChar(outer))))
+			outerBelow.WriteString(style.Render(string(upperBarChar(outer))))
 		} else {
-			outerRow.WriteString(" ")
+			outerAbove.WriteString(" ")
+			outerBelow.WriteString(" ")
 		}
 	}
 
-	inner := innerRow.String()
-	outer := outerRow.String()
-	body := strings.Join([]string{outer, inner, inner, outer}, "\n")
+	body := strings.Join([]string{outerAbove.String(), innerAbove.String(), innerBelow.String(), outerBelow.String()}, "\n")
 	return borderStyle(t, false).Width(width).Render(body)
 }
