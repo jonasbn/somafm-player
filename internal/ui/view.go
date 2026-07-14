@@ -173,11 +173,7 @@ func (m Model) View() string {
 	width := m.boxWidth()
 	lists := lipgloss.JoinHorizontal(lipgloss.Top, m.renderChannelsBox(t, width), m.renderTunesBox(t, width))
 
-	sections := []string{m.renderNowPlaying(t)}
-	if m.cfg.VisualizerEnabled {
-		sections = append(sections, m.renderVisualizerBox(t, m.fullBoxWidth()))
-	}
-	sections = append(sections, lists)
+	sections := []string{m.renderNowPlayingRow(t), lists}
 
 	footer := fmt.Sprintf("[Theme: %s]  tab focus · j/k move · enter play · b bookmark · a all/bookmarked · H/s tunes · +/- vol · m mute · t theme · v visualizer · r retry channels · q quit", t.Name)
 	if m.errMsg != "" {
@@ -186,4 +182,37 @@ func (m Model) View() string {
 	sections = append(sections, footer)
 
 	return strings.Join(sections, "\n")
+}
+
+// renderNowPlayingRow renders Now Playing alone, or joined with the
+// visualizer when enabled. It picks side-by-side (when there's enough
+// leftover terminal width after Now Playing's content-sized box) or
+// stacked, full-width — today's layout, kept as a fallback so the
+// visualizer never gets squeezed down to an unreadable sliver on narrow
+// terminals.
+func (m Model) renderNowPlayingRow(t theme.Theme) string {
+	nowPlaying := m.renderNowPlaying(t)
+	if !m.cfg.VisualizerEnabled {
+		return nowPlaying
+	}
+
+	if leftover, ok := m.sideBySideVisualizerWidth(lipgloss.Width(nowPlaying)); ok {
+		return lipgloss.JoinHorizontal(lipgloss.Top, nowPlaying, m.renderVisualizerBox(t, leftover))
+	}
+	return strings.Join([]string{nowPlaying, m.renderVisualizerBox(t, m.fullBoxWidth())}, "\n")
+}
+
+// sideBySideVisualizerWidth returns the content width available for the
+// visualizer box if placed beside an already-rendered Now Playing box of
+// the given width, and whether that leftover width clears the floor
+// needed to still look like a bar chart (minSideBySideVisualizerWidth,
+// defined in visualizer.go) rather than a sliver. Below the floor,
+// callers should fall back to the stacked layout.
+func (m Model) sideBySideVisualizerWidth(nowPlayingWidth int) (width int, ok bool) {
+	w := m.width
+	if w <= 0 {
+		w = defaultWidth
+	}
+	leftover := w - nowPlayingWidth - decorationPerBox
+	return leftover, leftover >= minSideBySideVisualizerWidth
 }

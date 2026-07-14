@@ -171,3 +171,72 @@ func TestView_RendersBothBoxesAndFooter(t *testing.T) {
 		t.Fatalf("View() output missing footer movement hint:\n%s", out)
 	}
 }
+
+func TestSideBySideVisualizerWidth_OkWhenLeftoverClearsFloor(t *testing.T) {
+	m := newTestModel()
+	m.width = 100
+
+	width, ok := m.sideBySideVisualizerWidth(50)
+	// 100 - 50 - 4 (decorationPerBox) = 46
+	if !ok || width != 46 {
+		t.Fatalf("sideBySideVisualizerWidth(50) = (%d, %v), want (46, true)", width, ok)
+	}
+}
+
+func TestSideBySideVisualizerWidth_FallsBackBelowFloor(t *testing.T) {
+	m := newTestModel()
+	m.width = 60
+
+	width, ok := m.sideBySideVisualizerWidth(50)
+	// 60 - 50 - 4 = 6, below minSideBySideVisualizerWidth (10)
+	if ok {
+		t.Fatalf("sideBySideVisualizerWidth(50) with m.width=60 = (%d, %v), want ok=false", width, ok)
+	}
+}
+
+func TestSideBySideVisualizerWidth_FallsBackToDefaultWidthWhenZero(t *testing.T) {
+	m := newTestModel()
+	m.width = 0
+
+	width, ok := m.sideBySideVisualizerWidth(50)
+	// defaultWidth (80) - 50 - 4 = 26
+	if !ok || width != 26 {
+		t.Fatalf("sideBySideVisualizerWidth(50) = (%d, %v), want (26, true) when m.width is unset", width, ok)
+	}
+}
+
+func TestView_PlacesVisualizerBesideNowPlayingWhenWideEnough(t *testing.T) {
+	m := newTestModel()
+	m.cfg.VisualizerEnabled = true
+	m.width = 200
+	// Populate bands so visualizer renders bars instead of empty space
+	m.bands = make([]float64, 32)
+	for i := range m.bands {
+		m.bands[i] = 0.5 + float64(i%4)*0.125 // Varied levels for visual interest
+	}
+	out := m.View()
+
+	found := false
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "♪") && strings.ContainsAny(line, "▁▂▃▄▅▆▇█") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("View() at width=200 should have a line containing both Now Playing content and visualizer bars (side-by-side layout):\n%s", out)
+	}
+}
+
+func TestView_StacksVisualizerBelowNowPlayingWhenNarrow(t *testing.T) {
+	m := newTestModel()
+	m.cfg.VisualizerEnabled = true
+	m.width = 20
+	out := m.View()
+
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "♪") && strings.ContainsAny(line, "▁▂▃▄▅▆▇█") {
+			t.Fatalf("View() at width=20 should stack (not place bars on the same line as Now Playing):\n%s", out)
+		}
+	}
+}
