@@ -72,3 +72,52 @@ func TestArt_MeasuredWidthsMatchTODOSource(t *testing.T) {
 		t.Errorf("Width(deepSpaceOneArt) = %d, want 61", got)
 	}
 }
+
+func TestFor_ArtContentMatchesTODOSourceByteForByte(t *testing.T) {
+	wantDefault := []string{
+		"                               __           ",
+		"                              / _|          ",
+		"  ___  ___  _ __ ___   __ _  | |_ _ __ ___  ",
+		" / __|/ _ \\| '_ ` _ \\ / _` | |  _| '_ ` _ \\ ",
+		" \\__ \\ (_) | | | | | | (_| | | | | | | | | |",
+		" |___/\\___/|_| |_| |_|\\__,_| |_| |_| |_| |_|",
+		"                                            ",
+	}
+	wantDroneZone := []string{
+		"  ____  ____   ___  _   _ _____   ________  _   _ _____ ",
+		" |  _ \\|  _ \\ / _ \\| \\ | | ____| |__  / _ \\| \\ | | ____|",
+		" | | | | |_) | | | |  \\| |  _|     / / | | |  \\| |  _|  ",
+		" | |_| |  _ <| |_| | |\\  | |___   / /| |_| | |\\  | |___ ",
+		" |____/|_| \\_\\\\___/|_| \\_|_____| /____\\___/|_| \\_|_____|",
+		"                                                        ",
+	}
+	wantDeepSpaceOne := []string{
+		" ____                 _____                    _____         ",
+		"|    \\ ___ ___ ___   |   __|___ ___ ___ ___   |     |___ ___ ",
+		"|  |  | -_| -_| . |  |__   | . | .'|  _| -_|  |  |  |   | -_|",
+		"|____/|___|___|  _|  |_____|  _|__,|___|___|  |_____|_|_|___|",
+		"              |_|          |_|",
+	}
+
+	cases := []struct {
+		title string
+		want  []string
+	}{
+		{"", wantDefault},
+		{"Drone Zone", wantDroneZone},
+		{"Drone Zone 2", wantDroneZone},
+		{"Deep Space One", wantDeepSpaceOne},
+	}
+
+	for _, c := range cases {
+		got, _ := For(c.title)
+		if len(got) != len(c.want) {
+			t.Fatalf("For(%q) returned %d lines, want %d", c.title, len(got), len(c.want))
+		}
+		for i := range c.want {
+			if got[i] != c.want[i] {
+				t.Errorf("For(%q) line %d = %q (len %d), want %q (len %d)", c.title, i, got[i], len(got[i]), c.want[i], len(c.want[i]))
+			}
+		}
+	}
+}
