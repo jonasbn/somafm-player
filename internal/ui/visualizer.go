@@ -17,6 +17,13 @@ const (
 	maxDisplayBars = 32
 )
 
+// minSideBySideVisualizerWidth is the content-column floor below which the
+// visualizer stops rendering beside Now Playing and falls back to the
+// stacked, full-width layout (see view.go's sideBySideVisualizerWidth) —
+// set 2 above minDisplayBars so the side-by-side layout gives up before
+// bars would get unreadably dense anyway.
+const minSideBySideVisualizerWidth = minDisplayBars + 2
+
 var barLevels = []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
 
 // displayBarCount clamps width to [minDisplayBars, maxDisplayBars].
@@ -96,12 +103,54 @@ func gradientColor(v float64, t theme.Theme) lipgloss.Color {
 	return lipgloss.Color(c.Hex())
 }
 
+// splitMirroredLevels maps a 0.0-1.0 band value onto the mirrored waveform
+// display's two rows per side: the inner row (touching the implicit center
+// line) fills first for v in [0, 0.5] via barChar(v*2); once maxed, the
+// outer row fills for the remainder, v in [0.5, 1.0], via
+// barChar((v-0.5)*2). innerFilled/outerFilled report whether each row
+// should render a glyph at all — v==0 renders both rows blank so silence
+// reads as empty space rather than the flat baseline glyph barChar(0)
+// would otherwise produce.
+func splitMirroredLevels(v float64) (inner rune, outer rune, innerFilled bool, outerFilled bool) {
+	if v < 0 {
+		v = 0
+	}
+	if v > 1 {
+		v = 1
+	}
+	if v == 0 {
+		return 0, 0, false, false
+	}
+	inner = barChar(v * 2)
+	if v <= 0.5 {
+		return inner, 0, true, false
+	}
+	outer = barChar((v - 0.5) * 2)
+	return inner, outer, true, true
+}
+
 func (m Model) renderVisualizerBox(t theme.Theme, width int) string {
 	bars := resampleBands(m.bands, displayBarCount(width))
-	var sb strings.Builder
+
+	var innerRow, outerRow strings.Builder
 	for _, v := range bars {
 		style := lipgloss.NewStyle().Foreground(gradientColor(v, t))
-		sb.WriteString(style.Render(string(barChar(v))))
+		inner, outer, innerFilled, outerFilled := splitMirroredLevels(v)
+		if innerFilled {
+			innerRow.WriteString(style.Render(string(inner)))
+		} else {
+			innerRow.WriteString(" ")
+		}
+		if outerFilled {
+			outerRow.WriteString(style.Render(string(outer)))
+		} else {
+			outerRow.WriteString(" ")
+		}
 	}
-	return borderStyle(t, false).Width(width).Render(sb.String())
+
+	inner := innerRow.String()
+	outer := outerRow.String()
+	body := strings.Join([]string{outer, inner, inner, outer}, "\n")
+	s := borderStyle(t, false)
+	return s.Render(body)
 }

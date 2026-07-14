@@ -2,6 +2,7 @@ package ui
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/lucasb-eyer/go-colorful"
@@ -87,5 +88,81 @@ func TestGradientColor_ClampsOutOfRangeInput(t *testing.T) {
 	}
 	if got, one := gradientColor(2, th), gradientColor(1, th); got != one {
 		t.Errorf("gradientColor(2) = %v, want same as gradientColor(1) = %v", got, one)
+	}
+}
+
+func TestSplitMirroredLevels_ZeroIsBlankBothRows(t *testing.T) {
+	_, _, innerFilled, outerFilled := splitMirroredLevels(0)
+	if innerFilled || outerFilled {
+		t.Fatalf("splitMirroredLevels(0) innerFilled=%v outerFilled=%v, want both false", innerFilled, outerFilled)
+	}
+}
+
+func TestSplitMirroredLevels_LowValueFillsInnerRowOnly(t *testing.T) {
+	inner, _, innerFilled, outerFilled := splitMirroredLevels(0.3)
+	if !innerFilled {
+		t.Fatalf("splitMirroredLevels(0.3) innerFilled = false, want true")
+	}
+	if outerFilled {
+		t.Fatalf("splitMirroredLevels(0.3) outerFilled = true, want false (v=0.3 is in the inner-only range [0,0.5])")
+	}
+	if want := barChar(0.6); inner != want {
+		t.Fatalf("splitMirroredLevels(0.3) inner = %q, want %q (barChar(0.3*2))", inner, want)
+	}
+}
+
+func TestSplitMirroredLevels_HighValueMaxesInnerAndPartiallyFillsOuter(t *testing.T) {
+	inner, outer, innerFilled, outerFilled := splitMirroredLevels(0.8)
+	if !innerFilled || !outerFilled {
+		t.Fatalf("splitMirroredLevels(0.8) innerFilled=%v outerFilled=%v, want both true", innerFilled, outerFilled)
+	}
+	if want := barChar(1); inner != want {
+		t.Fatalf("splitMirroredLevels(0.8) inner = %q, want %q (maxed out)", inner, want)
+	}
+	if want := barChar(0.6); outer != want {
+		t.Fatalf("splitMirroredLevels(0.8) outer = %q, want %q (barChar((0.8-0.5)*2))", outer, want)
+	}
+}
+
+func TestSplitMirroredLevels_ClampsOutOfRangeInput(t *testing.T) {
+	innerLo, outerLo, innerFilledLo, outerFilledLo := splitMirroredLevels(-1)
+	innerZero, outerZero, innerFilledZero, outerFilledZero := splitMirroredLevels(0)
+	if innerLo != innerZero || outerLo != outerZero || innerFilledLo != innerFilledZero || outerFilledLo != outerFilledZero {
+		t.Fatalf("splitMirroredLevels(-1) = (%q,%q,%v,%v), want same as splitMirroredLevels(0) = (%q,%q,%v,%v)",
+			innerLo, outerLo, innerFilledLo, outerFilledLo, innerZero, outerZero, innerFilledZero, outerFilledZero)
+	}
+
+	innerHi, outerHi, innerFilledHi, outerFilledHi := splitMirroredLevels(2)
+	innerOne, outerOne, innerFilledOne, outerFilledOne := splitMirroredLevels(1)
+	if innerHi != innerOne || outerHi != outerOne || innerFilledHi != innerFilledOne || outerFilledHi != outerFilledOne {
+		t.Fatalf("splitMirroredLevels(2) = (%q,%q,%v,%v), want same as splitMirroredLevels(1) = (%q,%q,%v,%v)",
+			innerHi, outerHi, innerFilledHi, outerFilledHi, innerOne, outerOne, innerFilledOne, outerFilledOne)
+	}
+}
+
+func TestRenderVisualizerBox_RendersFourMirroredContentRows(t *testing.T) {
+	m := newTestModel()
+	m.bands = []float64{0.9, 0.1, 0.5, 0.9, 0.1, 0.5, 0.9, 0.1}
+	out := m.renderVisualizerBox(theme.Get("Nord"), 8)
+
+	lines := strings.Split(out, "\n")
+	if len(lines) != 6 { // top border + 4 content rows + bottom border
+		t.Fatalf("renderVisualizerBox() produced %d lines, want 6 (border+4 content rows+border):\n%s", len(lines), out)
+	}
+}
+
+func TestRenderVisualizerBox_TopAndBottomRowsMirrorEachOther(t *testing.T) {
+	m := newTestModel()
+	m.bands = []float64{0.9, 0.1, 0.5, 0.9, 0.1, 0.5, 0.9, 0.1}
+	out := m.renderVisualizerBox(theme.Get("Nord"), 8)
+
+	lines := strings.Split(out, "\n")
+	// lines[0]=top border, lines[1]=outer-above, lines[2]=inner-above,
+	// lines[3]=inner-below, lines[4]=outer-below, lines[5]=bottom border.
+	if lines[1] != lines[4] {
+		t.Fatalf("outer rows do not mirror:\n top=%q\n bottom=%q", lines[1], lines[4])
+	}
+	if lines[2] != lines[3] {
+		t.Fatalf("inner rows do not mirror:\n top=%q\n bottom=%q", lines[2], lines[3])
 	}
 }
