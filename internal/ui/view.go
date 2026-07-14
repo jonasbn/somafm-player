@@ -173,7 +173,7 @@ func (m Model) View() string {
 	width := m.boxWidth()
 	lists := lipgloss.JoinHorizontal(lipgloss.Top, m.renderChannelsBox(t, width), m.renderTunesBox(t, width))
 
-	sections := []string{m.renderNowPlayingRow(t), lists}
+	sections := []string{m.renderLogo(t), m.renderNowPlayingRow(t), lists}
 
 	footer := fmt.Sprintf("[Theme: %s]  tab focus · j/k move · enter play · b bookmark · a all/bookmarked · H/s tunes · +/- vol · m mute · t theme · v visualizer · r retry channels · q quit", t.Name)
 	if m.errMsg != "" {

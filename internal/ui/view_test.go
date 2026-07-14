@@ -248,3 +248,15 @@ func TestView_StacksVisualizerBelowNowPlayingWhenNarrow(t *testing.T) {
 		t.Fatalf("renderNowPlayingRow() at width=20 produced %d lines, want 12 (stacked: Now Playing's 6 lines + visualizer's 6 lines):\n%s", len(lines), row)
 	}
 }
+
+func TestView_StartsWithRenderedLogo(t *testing.T) {
+	m := newTestModel()
+	th := theme.Get(m.cfg.Theme)
+	wantLogo := m.renderLogo(th)
+
+	out := m.View()
+
+	if !strings.HasPrefix(out, wantLogo) {
+		t.Fatalf("View() does not start with renderLogo() output.\nView():\n%s\nrenderLogo():\n%s", out, wantLogo)
+	}
+}
