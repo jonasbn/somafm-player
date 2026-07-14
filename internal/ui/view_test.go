@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/jonasbn/somafm-player/internal/config"
+	"github.com/jonasbn/somafm-player/internal/theme"
 )
 
 func TestChannelsHeader_ReflectsCurrentFilter(t *testing.T) {
@@ -232,22 +233,18 @@ func TestView_StacksVisualizerBelowNowPlayingWhenNarrow(t *testing.T) {
 	m := newTestModel()
 	m.cfg.VisualizerEnabled = true
 	m.width = 20
-	m.bands = make([]float64, 8)
-	for i := range m.bands {
-		m.bands[i] = 0.5
-	}
-	out := m.View()
 
-	sawBars := false
-	for _, line := range strings.Split(out, "\n") {
-		if strings.Contains(line, "♪") && strings.ContainsAny(line, "▁▂▃▄▅▆▇█") {
-			t.Fatalf("View() at width=20 should stack (not place bars on the same line as Now Playing):\n%s", out)
-		}
-		if strings.ContainsAny(line, "▁▂▃▄▅▆▇█") {
-			sawBars = true
-		}
-	}
-	if !sawBars {
-		t.Fatalf("View() at width=20 should still render visualizer bars somewhere (stacked below Now Playing):\n%s", out)
+	row := m.renderNowPlayingRow(theme.Get(m.cfg.Theme))
+	lines := strings.Split(row, "\n")
+	// Now Playing alone renders as 6 lines (border + 4 content rows +
+	// border); the visualizer (Task 1) also renders 4 content rows +
+	// border = 6 lines. A stacked layout concatenates them (6+6=12 lines);
+	// a side-by-side layout joins them onto the same 6 physical rows. This
+	// line count is a structural check that doesn't depend on which
+	// glyphs land on which row, unlike checking for bar characters on the
+	// "♪" line (which the previous version of this test did, and which
+	// turned out to depend on band-value/row-alignment coincidences).
+	if len(lines) != 12 {
+		t.Fatalf("renderNowPlayingRow() at width=20 produced %d lines, want 12 (stacked: Now Playing's 6 lines + visualizer's 6 lines):\n%s", len(lines), row)
 	}
 }
