@@ -69,3 +69,43 @@ go run .
 
 Config, including bookmarks, volume, theme, last-played channel, and visualizer setting, is stored at
 `~/.config/somafm-player/config.json` (or under `$XDG_CONFIG_HOME` if set).
+
+## Credits
+
+The ASCII logo banner shown above the player is generated with the
+[ASCII Art Text Generator](https://patorjk.com/software/taag/). It defaults to
+a "somafm" logo, and switches to a channel-specific logo when Drone Zone or
+Deep Space One is playing.
+
+**Default ("somafm"), "Big" font:**
+
+```
+                               __           
+                              / _|          
+  ___  ___  _ __ ___   __ _  | |_ _ __ ___  
+ / __|/ _ \| '_ ` _ \ / _` | |  _| '_ ` _ \ 
+ \__ \ (_) | | | | | | (_| | | | | | | | | |
+ |___/\___/|_| |_| |_|\__,_| |_| |_| |_| |_|
+                                            
+```
+
+**Drone Zone / Drone Zone 2, "Standard" or "wavescape" font:**
+
+```
+  ____  ____   ___  _   _ _____   ________  _   _ _____ 
+ |  _ \|  _ \ / _ \| \ | | ____| |__  / _ \| \ | | ____|
+ | | | | |_) | | | |  \| |  _|     / / | | |  \| |  _|  
+ | |_| |  _ <| |_| | |\  | |___   / /| |_| | |\  | |___ 
+ |____/|_| \_\\___/|_| \_|_____| /____\___/|_| \_|_____|
+                                                        
+```
+
+**Deep Space One, "Rectangles" or "Modular" font:**
+
+```
+ ____                 _____                    _____         
+|    \ ___ ___ ___   |   __|___ ___ ___ ___   |     |___ ___ 
+|  |  | -_| -_| . |  |__   | . | .'|  _| -_|  |  |  |   | -_|
+|____/|___|___|  _|  |_____|  _|__,|___|___|  |_____|_|_|___|
+              |_|          |_|
+```
