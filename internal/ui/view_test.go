@@ -232,11 +232,22 @@ func TestView_StacksVisualizerBelowNowPlayingWhenNarrow(t *testing.T) {
 	m := newTestModel()
 	m.cfg.VisualizerEnabled = true
 	m.width = 20
+	m.bands = make([]float64, 8)
+	for i := range m.bands {
+		m.bands[i] = 0.5
+	}
 	out := m.View()
 
+	sawBars := false
 	for _, line := range strings.Split(out, "\n") {
 		if strings.Contains(line, "♪") && strings.ContainsAny(line, "▁▂▃▄▅▆▇█") {
 			t.Fatalf("View() at width=20 should stack (not place bars on the same line as Now Playing):\n%s", out)
 		}
+		if strings.ContainsAny(line, "▁▂▃▄▅▆▇█") {
+			sawBars = true
+		}
+	}
+	if !sawBars {
+		t.Fatalf("View() at width=20 should still render visualizer bars somewhere (stacked below Now Playing):\n%s", out)
 	}
 }
