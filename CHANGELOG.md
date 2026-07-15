@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-07-15
+
+### Fixed
+
+- CI `lint` job no longer crashes on startup: `golangci-lint`'s prebuilt
+  binary lagged behind the module's declared Go version, so it now builds
+  from source with the toolchain already provisioned for the job, and
+  `go.mod`'s `go` directive was retidied to the version actually required
+  by dependencies.
+- Addressed unchecked-error-return (`errcheck`) findings surfaced now that
+  lint runs to completion: stream/response/oto `Close()` calls and test
+  `Write()` calls now explicitly discard their errors.
+
 ## [0.4.0] - 2026-07-15
 
 ### Added
@@ -99,6 +112,7 @@ Initial tagged release: a working terminal player for SomaFM stations.
 - Tidied `go.mod` to correctly mark direct dependencies (bubbletea, lipgloss).
 - Isolated `TestUpdate_QuitsOnQ` from the real user config directory.
 
+[0.4.1]: https://github.com/jonasbn/somafm-player/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jonasbn/somafm-player/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/jonasbn/somafm-player/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/jonasbn/somafm-player/compare/v0.3.0...v0.3.1
