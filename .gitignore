@@ -1,5 +1,6 @@
 /.superpowers/
 /somafm-player
+/dist/
 *.test
 .claude/worktrees
 .claude/scheduled_tasks.lock
