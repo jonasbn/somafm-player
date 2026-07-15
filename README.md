@@ -53,6 +53,16 @@ SomaFM channels are published as `.pls` playlists that point to plain HTTP Iceca
 
 Design specs and implementation plans for individual features live under `docs/superpowers/specs` and `docs/superpowers/plans`.
 
+## Motivation
+
+I always wanted a terminal-based music streaming player, especially one for SomaFM of which I have been a long time consumer and fan, but I just never found one that suited me. Now using Claude, I was able to build my own.
+
+A some point I need to integrate this with some other projects:
+
+- [somafm-currently-playing](https://github.com/jonasbn/somafm-currently-playing) - scraper helping me with booksmarks
+
+- And I have an unpublished project of processing my bookmarks and importing them into Spotify for a playlist I can also listen to offline.
+
 ## Credits
 
 The ASCII logo banner shown above the player is generated with the
