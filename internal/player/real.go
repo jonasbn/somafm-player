@@ -109,7 +109,7 @@ func (p *RealPlayer) Play(streamURL string) {
 			prevCancel()
 		}
 		if prevStream != nil {
-			prevStream.Close()
+			_ = prevStream.Close()
 		}
 		if prevDone != nil {
 			// Wait for the previous run to fully release its oto
@@ -136,7 +136,7 @@ func (p *RealPlayer) Stop() {
 		cancel()
 	}
 	if stream != nil {
-		stream.Close()
+		_ = stream.Close()
 	}
 }
 
@@ -197,7 +197,7 @@ func (p *RealPlayer) playOnce(ctx context.Context, streamURL string) error {
 		go func() {
 			res := <-resultCh
 			if res.stream != nil {
-				res.stream.Close()
+				_ = res.stream.Close()
 			}
 		}()
 		return nil
@@ -208,7 +208,7 @@ func (p *RealPlayer) playOnce(ctx context.Context, streamURL string) error {
 		// we noticed. Tear down the stream we just opened without
 		// touching p.stream, building the decoder/oto context, or
 		// sending ReconnectedMsg.
-		stream.Close()
+		_ = stream.Close()
 		return nil
 	}
 
@@ -221,7 +221,7 @@ func (p *RealPlayer) playOnce(ctx context.Context, streamURL string) error {
 			p.stream = nil
 		}
 		p.mu.Unlock()
-		stream.Close()
+		_ = stream.Close()
 	}()
 
 	stream.MetadataCallbackFunc = func(m *shoutcast.Metadata) {
@@ -238,10 +238,10 @@ func (p *RealPlayer) playOnce(ctx context.Context, streamURL string) error {
 	if err != nil {
 		return err
 	}
-	defer otoCtx.Close()
+	defer func() { _ = otoCtx.Close() }()
 
 	otoPlayer := otoCtx.NewPlayer()
-	defer otoPlayer.Close()
+	defer func() { _ = otoPlayer.Close() }()
 
 	analyzer := spectrum.New(decoder.SampleRate())
 	p.mu.Lock()

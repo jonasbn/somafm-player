@@ -52,7 +52,7 @@ func Fetch(ctx context.Context, url string) ([]Channel, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status %d from %s", resp.StatusCode, url)
 	}
@@ -103,7 +103,7 @@ func ResolveStreamURL(ctx context.Context, plsURL string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("unexpected status %d from %s", resp.StatusCode, plsURL)
 	}
