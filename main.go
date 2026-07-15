@@ -37,7 +37,7 @@ func main() {
 		m = m.WithStartupError(fmt.Sprintf("Couldn't load channel list — check your connection, press r to retry (%v)", fetchErr))
 	}
 
-	p := tea.NewProgram(m)
+	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
