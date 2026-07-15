@@ -79,20 +79,33 @@ Triggers:
 
 ## `tag-release-goreleaser.yml`
 
-Triggered on `v*.*.*` tag pushes (matching the existing `v0.1.0`–`v0.3.2`
-tagging already in use). Because `oto` v1 requires cgo on macOS (CoreAudio
-bindings), GoReleaser can't cross-compile arm64↔amd64 from a single runner.
-Uses GoReleaser's **partial/split build** pattern:
+> **Revised during implementation (2026-07-15):** the partial/split build
+> approach described below assumed GoReleaser OSS could merge builds from
+> two runners. It can't — that's a GoReleaser Pro-only feature (confirmed
+> against https://goreleaser.com/customization/partial/). Task 4's local
+> snapshot build had already shown cgo cross-compilation from an arm64 Mac
+> to darwin/amd64 works natively, so the actual implementation runs a
+> single `macos-latest` job (arm64; `macos-14` is itself now deprecated
+> per actions/runner-images) with plain `goreleaser release --clean`, building
+> both arches from `.goreleaser.yaml`'s existing `builds:` list. The
+> Release notes/changelog behavior described below is unaffected — it's
+> exactly what a normal `goreleaser release` run produces.
 
-1. A `macos-13` (Intel) job builds the `darwin/amd64` leg:
+Triggered on `v*.*.*` tag pushes (matching the existing `v0.1.0`–`v0.3.2`
+tagging already in use). ~~Because `oto` v1 requires cgo on macOS (CoreAudio
+bindings), GoReleaser can't cross-compile arm64↔amd64 from a single runner.
+Uses GoReleaser's **partial/split build** pattern~~ (superseded, see note
+above):
+
+1. ~~A `macos-13` (Intel) job builds the `darwin/amd64` leg:
    `goreleaser build --single-target --snapshot` (or `release --split`,
    depending on the GoReleaser version at implementation time) with
-   `CGO_ENABLED=1`, uploading the partial dist as a build artifact.
-2. A `macos-14` (Apple Silicon) job builds the `darwin/arm64` leg the same
-   way.
-3. A final `merge` job downloads both partial dists and runs
+   `CGO_ENABLED=1`, uploading the partial dist as a build artifact.~~
+2. ~~A `macos-14` (Apple Silicon) job builds the `darwin/arm64` leg the same
+   way.~~
+3. ~~A final `merge` job downloads both partial dists and runs
    `goreleaser continue --merge` (or equivalent) to assemble one GitHub
-   Release: `.tar.gz` archive per arch, a `checksums.txt`, and release notes.
+   Release: `.tar.gz` archive per arch, a `checksums.txt`, and release notes.~~
 
 Release notes: GoReleaser's changelog groups commits since the last tag into
 Features/Fixes/Other (matching the `feat:`/`fix:`/etc. prefixes already used
