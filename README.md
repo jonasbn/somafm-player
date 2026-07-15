@@ -44,6 +44,22 @@ go build -o somafm-player .
 
 Then run the resulting binary, e.g. `./somafm-player`.
 
+**From a downloaded release binary:**
+
+Download the `.tar.gz` for your Mac's architecture from the
+[Releases page](https://github.com/jonasbn/somafm-player/releases), then:
+
+```sh
+tar -xzf somafm-player_*_darwin_*.tar.gz
+xattr -d com.apple.quarantine somafm-player
+./somafm-player
+```
+
+The binary isn't signed or notarized yet, so macOS Gatekeeper quarantines
+it on download — the `xattr` command above clears that flag. Without it,
+double-clicking or running the binary will show an "cannot be opened
+because the developer cannot be verified" dialog.
+
 ## Usage
 
 ```sh
