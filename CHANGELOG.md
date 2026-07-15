@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-07-15
+
+### Added
+
+- CI workflow (`pr-main-build-test-lint`) running build, test, and lint on
+  pull requests and pushes to main.
+- Scheduled `zizmor` workflow lint check on main.
+- GoReleaser configuration and `tag-release-goreleaser` workflow, building and
+  publishing darwin amd64/arm64 release binaries on tag push.
+- Dependabot configuration for Go modules and GitHub Actions.
+- Installation instructions in the README, including a Gatekeeper workaround
+  for unsigned macOS release binaries.
+
 ## [0.3.2] - 2026-07-15
 
 ### Fixed
@@ -86,6 +99,7 @@ Initial tagged release: a working terminal player for SomaFM stations.
 - Tidied `go.mod` to correctly mark direct dependencies (bubbletea, lipgloss).
 - Isolated `TestUpdate_QuitsOnQ` from the real user config directory.
 
+[0.4.0]: https://github.com/jonasbn/somafm-player/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/jonasbn/somafm-player/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/jonasbn/somafm-player/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/jonasbn/somafm-player/compare/v0.2.0...v0.3.0
