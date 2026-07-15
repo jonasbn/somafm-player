@@ -24,10 +24,36 @@ A terminal (TUI) player for [SomaFM](https://somafm.com) Icecast streams, built 
 - Go 1.26 or later.
 - A working audio output device (playback uses [oto](https://github.com/hajimehoshi/oto) for cross-platform PCM output).
 
+## Installation
+
+**With `go install`:**
+
+```sh
+go install github.com/jonasbn/somafm-player@latest
+```
+
+This places a `somafm-player` binary in `$(go env GOPATH)/bin` (make sure that's on your `PATH`).
+
+**From source:**
+
+```sh
+git clone https://github.com/jonasbn/somafm-player.git
+cd somafm-player
+go build -o somafm-player .
+```
+
+Then run the resulting binary, e.g. `./somafm-player`.
+
 ## Usage
 
 ```sh
 go run .
+```
+
+Or, if you installed a binary as above:
+
+```sh
+somafm-player
 ```
 
 | Key | Action |
