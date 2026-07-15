@@ -57,7 +57,7 @@ xattr -d com.apple.quarantine somafm-player
 
 The binary isn't signed or notarized yet, so macOS Gatekeeper quarantines
 it on download — the `xattr` command above clears that flag. Without it,
-double-clicking or running the binary will show an "cannot be opened
+double-clicking or running the binary will show a "cannot be opened
 because the developer cannot be verified" dialog.
 
 ## Usage

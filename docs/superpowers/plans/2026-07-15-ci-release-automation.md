@@ -4,7 +4,7 @@
 
 **Goal:** Give `somafm-player` a GitHub Actions baseline: PR/main build+test+lint+vuln checks, a zizmor security lint of the workflows themselves, Dependabot updates, and a GoReleaser-driven release pipeline that publishes macOS (amd64+arm64) binaries on tag push.
 
-**Architecture:** Three workflow files plus one Dependabot config, all under `.github/`, named per the SSW `{{TRIGGER}}-{{ACTIONS}}-{{ADDITIONAL DETAILS}}.yml` scheme. Release building uses GoReleaser's split/partial-build pattern across two native macOS runners (Intel + Apple Silicon) because `oto` v1 needs cgo, then a merge job assembles one GitHub Release.
+**Architecture:** Three workflow files plus one Dependabot config, all under `.github/`, named per the SSW `{{TRIGGER}}-{{ACTIONS}}-{{ADDITIONAL DETAILS}}.yml` scheme. Release building uses a single `macos-latest` runner running `goreleaser release --clean` for both arches (darwin/amd64 and darwin/arm64, both already listed in `.goreleaser.yaml`) — cgo cross-compilation from arm64 to amd64 was proven to work, so no split-runner/merge-job design is needed.
 
 **Tech Stack:** GitHub Actions, `golangci-lint`, `govulncheck`, `zizmor` (via `uvx`), GoReleaser, Dependabot.
 
@@ -516,7 +516,7 @@ git commit -m "docs: document unsigned macOS release binary Gatekeeper workaroun
 
 - **Spec coverage:** Task 1 → CI goal (build/test/lint/govulncheck). Task 2
   → zizmor goal. Task 3 → Dependabot goal. Tasks 4–5 → release goal
-  (GoReleaser config + split-build workflow). Task 6 → the unsigned-binary
+  (GoReleaser config + single-runner release workflow). Task 6 → the unsigned-binary
   non-goal's required README caveat. All five numbered goals and the
   relevant non-goals in the spec are covered.
 - **Placeholders:** The `<...-sha>` markers are intentional — they're
@@ -525,5 +525,7 @@ git commit -m "docs: document unsigned macOS release binary Gatekeeper workaroun
   content.
 - **Type/name consistency:** Workflow file names match the spec's table
   exactly. `.goreleaser.yaml` build `id`s (`darwin-amd64`, `darwin-arm64`)
-  are referenced identically in Task 5's `--id` flags. Binary name
+  just need to exist in the config — Task 5's revised workflow runs plain
+  `goreleaser release --clean` over the whole config with no `--id` flags,
+  so it builds every target without referencing the ids directly. Binary name
   `somafm-player` matches the module name and existing `.gitignore` entry.
