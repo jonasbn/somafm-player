@@ -31,7 +31,7 @@ Hide
 Type "export XDG_CONFIG_HOME=$(mktemp -d)" Enter
 Type "mkdir -p $XDG_CONFIG_HOME/somafm-player" Enter
 Type 'cat > $XDG_CONFIG_HOME/somafm-player/config.json <<"EOF"' Enter
-Type '{"lastChannel": "", "volume": 45, "muted": false, "theme": "Nord", "bookmarkedChannels": ["Drone Zone", "Groove Salad"], "bookmarkedTunes": [], "visualizerEnabled": true}' Enter
+Type '{"lastChannel": "", "volume": 100, "muted": false, "theme": "Nord", "bookmarkedChannels": ["Drone Zone", "Groove Salad"], "bookmarkedTunes": [], "visualizerEnabled": true}' Enter
 Type "EOF" Enter
 Type "go build -o /tmp/somafm-player-demo ." Enter
 Sleep 10s
