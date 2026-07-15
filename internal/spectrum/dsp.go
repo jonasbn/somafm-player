@@ -95,7 +95,48 @@ func bucketMagnitudes(coeffs []complex128, sampleRate int, bars int) []float64 {
 			raw[i] /= float64(counts[i])
 		}
 	}
+	fillEmptyBands(raw, counts)
 	return raw
+}
+
+// fillEmptyBands linearly interpolates bands that received no FFT bin
+// (counts[i]==0, raw[i] left at its zero value) from their nearest
+// non-empty neighbors. This happens for narrow low-frequency bands when
+// the log-spaced band width is smaller than the FFT's bin spacing
+// (sampleRate/windowSize) — e.g. with the analyzer's real windowSize=2048
+// at 44100Hz, several of the 32 bands never get a bin. Without this fill
+// those bands would read 0 forever regardless of audio content, showing
+// up as permanently empty visualizer columns. A band with a non-empty
+// neighbor on only one side just copies that side's value.
+func fillEmptyBands(raw []float64, counts []int) {
+	for i := range raw {
+		if counts[i] > 0 {
+			continue
+		}
+		prevIdx, prevVal, havePrev := -1, 0.0, false
+		for j := i - 1; j >= 0; j-- {
+			if counts[j] > 0 {
+				prevIdx, prevVal, havePrev = j, raw[j], true
+				break
+			}
+		}
+		nextIdx, nextVal, haveNext := -1, 0.0, false
+		for j := i + 1; j < len(raw); j++ {
+			if counts[j] > 0 {
+				nextIdx, nextVal, haveNext = j, raw[j], true
+				break
+			}
+		}
+		switch {
+		case havePrev && haveNext:
+			t := float64(i-prevIdx) / float64(nextIdx-prevIdx)
+			raw[i] = prevVal + (nextVal-prevVal)*t
+		case havePrev:
+			raw[i] = prevVal
+		case haveNext:
+			raw[i] = nextVal
+		}
+	}
 }
 
 // normalize maps a raw averaged magnitude to [0.0, 1.0], clamping at the

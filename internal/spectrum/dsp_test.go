@@ -115,6 +115,29 @@ func TestBucketMagnitudes_GroupsIntoExpectedBandAndAverages(t *testing.T) {
 	}
 }
 
+func TestBucketMagnitudes_NoPermanentlyEmptyBandsWithBroadbandInput(t *testing.T) {
+	// windowSize=2048 and sampleRate=44100 are the analyzer's real
+	// parameters (see analyzer.go). At that resolution, several
+	// low-frequency log-spaced bands (out of 32) are narrower than the
+	// FFT's ~21.5Hz bin spacing and never receive a single bin, so their
+	// average stays hard-zero no matter what's playing. With energy at
+	// every bin (broadband input), every band should read > 0 — a band
+	// stuck at 0 here is the analyzer rendering as a permanently empty
+	// visualizer column regardless of audio content.
+	coeffsLen := windowSize/2 + 1
+	coeffs := make([]complex128, coeffsLen)
+	for i := 1; i < coeffsLen; i++ {
+		coeffs[i] = complex(10, 0)
+	}
+
+	bands := bucketMagnitudes(coeffs, 44100, analysisBands)
+	for i, v := range bands {
+		if v == 0 {
+			t.Errorf("band %d = 0 with broadband input across all bins; want > 0", i)
+		}
+	}
+}
+
 func TestNormalize_ClampsToUnitRange(t *testing.T) {
 	cases := []struct{ mag, want float64 }{
 		{0, 0},
