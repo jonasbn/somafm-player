@@ -35,3 +35,21 @@ type Controller interface {
 	// Close unregisters the controller and releases its resources.
 	Close()
 }
+
+// NewNoop returns a Controller that does nothing: no hardware key events
+// are ever delivered, and SetNowPlaying/SetPlaying/Close are no-ops. It's
+// the stub used on every non-darwin platform, and the fallback callers
+// should use if New ever returns a non-nil error, so a nil Controller
+// interface never reaches the rest of the program.
+func NewNoop() Controller {
+	return &noopController{events: make(chan Event)}
+}
+
+type noopController struct {
+	events chan Event
+}
+
+func (c *noopController) Events() <-chan Event         { return c.events }
+func (c *noopController) SetNowPlaying(NowPlayingInfo) {}
+func (c *noopController) SetPlaying(bool)              {}
+func (c *noopController) Close()                       {}
