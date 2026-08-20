@@ -8,6 +8,7 @@ import (
 	"github.com/jonasbn/somafm-player/internal/channels"
 	"github.com/jonasbn/somafm-player/internal/config"
 	"github.com/jonasbn/somafm-player/internal/history"
+	"github.com/jonasbn/somafm-player/internal/mediakeys"
 	"github.com/jonasbn/somafm-player/internal/player"
 )
 
@@ -50,7 +51,7 @@ func TestUpdate_EnterOnBookmarkedChannelResolvesAndPlays(t *testing.T) {
 
 func TestUpdate_StreamResolvedMsgStartsPlaybackAndSetsNowPlaying(t *testing.T) {
 	fp := player.NewFakePlayer()
-	m := New(config.DefaultConfig(), []channels.Channel{{Title: "Drone Zone"}}, fp, history.New(5))
+	m := New(config.DefaultConfig(), []channels.Channel{{Title: "Drone Zone"}}, fp, history.New(5), mediakeys.NewFakeController())
 
 	next, _ := m.Update(streamResolvedMsg{
 		channelTitle: "Drone Zone",

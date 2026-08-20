@@ -12,6 +12,7 @@ import (
 	"github.com/jonasbn/somafm-player/internal/channels"
 	"github.com/jonasbn/somafm-player/internal/config"
 	"github.com/jonasbn/somafm-player/internal/history"
+	"github.com/jonasbn/somafm-player/internal/mediakeys"
 	"github.com/jonasbn/somafm-player/internal/player"
 	"github.com/jonasbn/somafm-player/internal/ui"
 )
@@ -30,9 +31,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	mk, err := mediakeys.New()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "warning: media key integration unavailable:", err)
+	}
+
 	chs, fetchErr := channels.Fetch(context.Background(), channels.DefaultChannelsURL)
 
-	m := ui.New(cfg, chs, player.NewRealPlayer(), history.New(5))
+	m := ui.New(cfg, chs, player.NewRealPlayer(), history.New(5), mk)
 	if fetchErr != nil {
 		m = m.WithStartupError(fmt.Sprintf("Couldn't load channel list — check your connection, press r to retry (%v)", fetchErr))
 	}

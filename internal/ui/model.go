@@ -8,6 +8,7 @@ import (
 	"github.com/jonasbn/somafm-player/internal/channels"
 	"github.com/jonasbn/somafm-player/internal/config"
 	"github.com/jonasbn/somafm-player/internal/history"
+	"github.com/jonasbn/somafm-player/internal/mediakeys"
 	"github.com/jonasbn/somafm-player/internal/player"
 )
 
@@ -59,8 +60,9 @@ type Model struct {
 	focus           focusArea
 	width           int
 
-	player player.Player
-	hist   *history.History
+	player    player.Player
+	hist      *history.History
+	mediaKeys mediakeys.Controller
 
 	nowPlaying nowPlayingState
 	bands      []float64
@@ -71,7 +73,7 @@ type Model struct {
 	session        string
 }
 
-func New(cfg config.Config, chs []channels.Channel, p player.Player, hist *history.History) Model {
+func New(cfg config.Config, chs []channels.Channel, p player.Player, hist *history.History, mk mediakeys.Controller) Model {
 	// Sync the loaded config's volume/mute state into the player itself so
 	// the very first Play() call (including the auto-resume path in Init)
 	// honors the user's saved settings instead of the player's own defaults.
@@ -89,13 +91,14 @@ func New(cfg config.Config, chs []channels.Channel, p player.Player, hist *histo
 		channelsFilter: filter,
 		player:         p,
 		hist:           hist,
+		mediaKeys:      mk,
 		width:          defaultWidth,
 		sessionStarted: time.Now(),
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	cmds := []tea.Cmd{waitForPlayerMsg(m.player), tickCmd()}
+	cmds := []tea.Cmd{waitForPlayerMsg(m.player), waitForMediaKeyCmd(m.mediaKeys), tickCmd()}
 	if m.cfg.VisualizerEnabled {
 		cmds = append(cmds, visualizerTickCmd())
 	}
@@ -251,6 +254,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m.handleVisualizerTick(), visualizerTickCmd()
+	}
+
+	if _, ok := msg.(mediaKeyMsg); ok {
+		return m.handleMediaKeyMsg(), waitForMediaKeyCmd(m.mediaKeys)
 	}
 
 	switch msg.(type) {
