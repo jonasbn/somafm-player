@@ -14,7 +14,7 @@ type noopController struct {
 	events chan Event
 }
 
-func (c *noopController) Events() <-chan Event           { return c.events }
-func (c *noopController) SetNowPlaying(NowPlayingInfo)    {}
-func (c *noopController) SetPlaying(bool)                 {}
-func (c *noopController) Close()                          {}
+func (c *noopController) Events() <-chan Event         { return c.events }
+func (c *noopController) SetNowPlaying(NowPlayingInfo) {}
+func (c *noopController) SetPlaying(bool)              {}
+func (c *noopController) Close()                       {}
