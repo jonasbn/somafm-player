@@ -3,6 +3,14 @@
 #import <MediaPlayer/MediaPlayer.h>
 #import "_cgo_export.h"
 
+// addTargetWithHandler: returns an opaque token identifying the
+// registration; removeTarget: needs that same token to unregister it
+// (removeTarget:nil matches nothing and is a silent no-op). Stash the
+// three tokens here so mediakeys_stop can actually undo mediakeys_start.
+static id playTarget = nil;
+static id pauseTarget = nil;
+static id toggleTarget = nil;
+
 void mediakeys_start(void) {
     MPRemoteCommandCenter *center = [MPRemoteCommandCenter sharedCommandCenter];
 
@@ -15,9 +23,9 @@ void mediakeys_start(void) {
         return MPRemoteCommandHandlerStatusSuccess;
     };
 
-    [center.playCommand addTargetWithHandler:handler];
-    [center.pauseCommand addTargetWithHandler:handler];
-    [center.togglePlayPauseCommand addTargetWithHandler:handler];
+    playTarget = [center.playCommand addTargetWithHandler:handler];
+    pauseTarget = [center.pauseCommand addTargetWithHandler:handler];
+    toggleTarget = [center.togglePlayPauseCommand addTargetWithHandler:handler];
 
     center.playCommand.enabled = YES;
     center.pauseCommand.enabled = YES;
@@ -38,9 +46,12 @@ void mediakeys_run_loop(void) {
 
 void mediakeys_stop(void) {
     MPRemoteCommandCenter *center = [MPRemoteCommandCenter sharedCommandCenter];
-    [center.playCommand removeTarget:nil];
-    [center.pauseCommand removeTarget:nil];
-    [center.togglePlayPauseCommand removeTarget:nil];
+    [center.playCommand removeTarget:playTarget];
+    [center.pauseCommand removeTarget:pauseTarget];
+    [center.togglePlayPauseCommand removeTarget:toggleTarget];
+    playTarget = nil;
+    pauseTarget = nil;
+    toggleTarget = nil;
 }
 
 void mediakeys_set_now_playing(const char *channel, const char *title, const char *artist) {
