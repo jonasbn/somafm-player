@@ -13,20 +13,26 @@ func TestUpdate_MediaKeyEventTogglesMute(t *testing.T) {
 	m := newTestModelWithPlayerAndMediaKeys(fp, mk)
 
 	mk.Emit(mediakeys.PlayPauseEvent)
-	cmd := waitForMediaKeyCmd(mk)
-	next, _ := m.Update(cmd())
+	initialCmd := waitForMediaKeyCmd(mk)
+	next, cmd := m.Update(initialCmd())
 	m = next.(Model)
 
 	if !m.cfg.Muted || !fp.Muted() {
 		t.Fatal("expected muted = true after a media-key event")
 	}
+	if cmd == nil {
+		t.Fatal("expected Update to return a non-nil re-arm command")
+	}
 
 	mk.Emit(mediakeys.PlayPauseEvent)
-	next, _ = m.Update(cmd())
+	next, cmd = m.Update(cmd())
 	m = next.(Model)
 
 	if m.cfg.Muted || fp.Muted() {
 		t.Fatal("expected muted = false after a second media-key event")
+	}
+	if cmd == nil {
+		t.Fatal("expected Update to return a non-nil re-arm command on the second event too")
 	}
 }
 

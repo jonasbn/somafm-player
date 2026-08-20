@@ -51,7 +51,8 @@ func TestUpdate_EnterOnBookmarkedChannelResolvesAndPlays(t *testing.T) {
 
 func TestUpdate_StreamResolvedMsgStartsPlaybackAndSetsNowPlaying(t *testing.T) {
 	fp := player.NewFakePlayer()
-	m := New(config.DefaultConfig(), []channels.Channel{{Title: "Drone Zone"}}, fp, history.New(5), mediakeys.NewFakeController())
+	mk := mediakeys.NewFakeController()
+	m := New(config.DefaultConfig(), []channels.Channel{{Title: "Drone Zone"}}, fp, history.New(5), mk)
 
 	next, _ := m.Update(streamResolvedMsg{
 		channelTitle: "Drone Zone",
@@ -68,10 +69,15 @@ func TestUpdate_StreamResolvedMsgStartsPlaybackAndSetsNowPlaying(t *testing.T) {
 	if urls := fp.PlayedURLs(); len(urls) != 1 || urls[0] != "https://ice5.somafm.com/dronezone-128-mp3" {
 		t.Fatalf("fake player PlayedURLs() = %v, want the resolved stream URL", urls)
 	}
+	if got := mk.NowPlaying().Channel; got != "Drone Zone" {
+		t.Fatalf("mediakeys NowPlaying().Channel = %q, want Drone Zone", got)
+	}
 }
 
 func TestUpdate_TrackChangedMsgRecordsPreviousTrackToHistory(t *testing.T) {
-	m := newTestModel()
+	fp := player.NewFakePlayer()
+	mk := mediakeys.NewFakeController()
+	m := newTestModelWithPlayerAndMediaKeys(fp, mk)
 	m.nowPlaying = nowPlayingState{title: "Old Track", artist: "Old Artist", channel: "Groove Salad"}
 
 	next, _ := m.Update(player.TrackChangedMsg{Title: "New Track", Artist: "New Artist"})
@@ -83,6 +89,10 @@ func TestUpdate_TrackChangedMsgRecordsPreviousTrackToHistory(t *testing.T) {
 	entries := m.hist.Entries()
 	if len(entries) != 1 || entries[0].Title != "Old Track" {
 		t.Fatalf("history entries = %+v, want the previous track recorded", entries)
+	}
+	got := mk.NowPlaying()
+	if got.Title != "New Track" || got.Artist != "New Artist" {
+		t.Fatalf("mediakeys NowPlaying() = %+v, want Title/Artist = New Track/New Artist", got)
 	}
 }
 
@@ -144,17 +154,27 @@ func TestUpdate_RKeyReturnsFetchChannelsCommand(t *testing.T) {
 }
 
 func TestUpdate_ConnectionLostAndReconnectedTogglesConnectedState(t *testing.T) {
-	m := newTestModel()
+	fp := player.NewFakePlayer()
+	mk := mediakeys.NewFakeController()
+	m := newTestModelWithPlayerAndMediaKeys(fp, mk)
+	m.nowPlaying = nowPlayingState{channel: "Groove Salad", connected: true}
+	m.syncNowPlaying() // prime mk.Playing() = true, so ConnectionLostMsg has to flip it to false itself
 
 	next, _ := m.Update(player.ConnectionLostMsg{})
 	m = next.(Model)
 	if m.nowPlaying.connected {
 		t.Fatal("connected = true after ConnectionLostMsg, want false")
 	}
+	if mk.Playing() {
+		t.Fatal("mediakeys Playing() = true after ConnectionLostMsg, want false")
+	}
 
 	next, _ = m.Update(player.ReconnectedMsg{})
 	m = next.(Model)
 	if !m.nowPlaying.connected {
 		t.Fatal("connected = false after ReconnectedMsg, want true")
+	}
+	if !mk.Playing() {
+		t.Fatal("mediakeys Playing() = false after ReconnectedMsg, want true")
 	}
 }
