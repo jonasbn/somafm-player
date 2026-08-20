@@ -31,6 +31,11 @@ func (m Model) handleMediaKeyMsg() Model {
 // reflect too. Called from every path that changes m.nowPlaying or
 // m.cfg.Muted.
 func (m Model) syncNowPlaying() {
+	if m.nowPlaying.channel == "" {
+		// Nothing has ever been played (e.g. "m" pressed before enter).
+		// Publishing here would show a blank Now Playing item in macOS.
+		return
+	}
 	m.mediaKeys.SetNowPlaying(mediakeys.NowPlayingInfo{
 		Channel: m.nowPlaying.channel,
 		Title:   m.nowPlaying.title,

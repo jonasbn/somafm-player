@@ -12,6 +12,7 @@ type FakeController struct {
 	nowPlaying NowPlayingInfo
 	playing    bool
 	closed     bool
+	syncCalls  int
 }
 
 func NewFakeController() *FakeController {
@@ -26,6 +27,7 @@ func (f *FakeController) SetNowPlaying(info NowPlayingInfo) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.nowPlaying = info
+	f.syncCalls++
 }
 
 func (f *FakeController) SetPlaying(playing bool) {
@@ -61,4 +63,14 @@ func (f *FakeController) Closed() bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.closed
+}
+
+// SyncCalls returns how many times SetNowPlaying was called, so tests can
+// assert a publish did or didn't happen without relying on the published
+// value alone (an unpublished zero value and a published empty one are
+// otherwise indistinguishable).
+func (f *FakeController) SyncCalls() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.syncCalls
 }

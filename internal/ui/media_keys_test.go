@@ -89,6 +89,33 @@ func TestSyncNowPlaying_NotPlayingWhenMutedOrDisconnected(t *testing.T) {
 	}
 }
 
+func TestSyncNowPlaying_SkipsPublishingWhenNoChannelHasBeenSet(t *testing.T) {
+	mk := mediakeys.NewFakeController()
+	m := newTestModelWithPlayerAndMediaKeys(player.NewFakePlayer(), mk)
+
+	m.syncNowPlaying()
+
+	if mk.SyncCalls() != 0 {
+		t.Fatalf("SyncCalls() = %d, want 0 (no channel has ever been set, so nothing should be published)", mk.SyncCalls())
+	}
+}
+
+func TestUpdate_MKeyBeforeAnyChannelPlayedDoesNotPublishBlankNowPlaying(t *testing.T) {
+	fp := player.NewFakePlayer()
+	mk := mediakeys.NewFakeController()
+	m := newTestModelWithPlayerAndMediaKeys(fp, mk)
+
+	next, _ := m.Update(key("m"))
+	m = next.(Model)
+
+	if !m.cfg.Muted || !fp.Muted() {
+		t.Fatal("expected muted = true after m, even with nothing playing")
+	}
+	if mk.SyncCalls() != 0 {
+		t.Fatalf("SyncCalls() = %d, want 0 (muting before ever playing shouldn't publish a blank Now Playing item)", mk.SyncCalls())
+	}
+}
+
 func TestUpdate_MToggleMuteSyncsPlayingState(t *testing.T) {
 	fp := player.NewFakePlayer()
 	mk := mediakeys.NewFakeController()
