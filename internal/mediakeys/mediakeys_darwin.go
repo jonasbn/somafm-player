@@ -37,7 +37,10 @@ type darwinController struct {
 }
 
 // New registers this process as a Now Playing target and starts the
-// background run-loop goroutine that keeps the registration alive.
+// background run-loop goroutine that keeps the registration alive. That
+// goroutine runs for the process's lifetime by design — mediakeys.New is
+// only ever called once, from main.go — and is reclaimed by process
+// exit, not by Close.
 func New() (Controller, error) {
 	go func() {
 		runtime.LockOSThread()
@@ -71,6 +74,8 @@ func (c *darwinController) SetPlaying(playing bool) {
 	C.mediakeys_set_playing(v)
 }
 
+// Close unregisters the command handlers New registered. It does not stop
+// the run-loop goroutine New started; see New's doc comment.
 func (c *darwinController) Close() {
 	C.mediakeys_stop()
 }

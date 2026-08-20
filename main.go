@@ -36,6 +36,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "warning: media key integration unavailable:", err)
 		mk = mediakeys.NewNoop()
 	}
+	defer mk.Close()
 
 	chs, fetchErr := channels.Fetch(context.Background(), channels.DefaultChannelsURL)
 

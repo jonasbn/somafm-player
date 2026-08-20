@@ -22,7 +22,7 @@ type NowPlayingInfo struct {
 }
 
 // Controller receives hardware media-key events and publishes playback
-// state to macOS. Callers must call Close when done.
+// state to macOS.
 type Controller interface {
 	// Events delivers a PlayPauseEvent each time the hardware key is
 	// pressed. The channel is never closed by the Controller.
@@ -32,7 +32,11 @@ type Controller interface {
 	SetNowPlaying(info NowPlayingInfo)
 	// SetPlaying updates the playback state shown by macOS.
 	SetPlaying(playing bool)
-	// Close unregisters the controller and releases its resources.
+	// Close unregisters the controller's command handlers. On darwin
+	// this does not stop the background run-loop goroutine New started:
+	// that goroutine is process-lifetime by design (see the darwin
+	// implementation's New doc comment) and is reclaimed by process
+	// exit, not by Close. Safe to call once, at most, before exit.
 	Close()
 }
 
