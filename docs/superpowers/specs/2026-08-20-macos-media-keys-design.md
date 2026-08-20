@@ -48,10 +48,14 @@ today is `enter` (start a channel) and `m` (mute toggle).
   offers `nextTrackCommand`/`previousTrackCommand`, but those commands
   are not registered, so macOS won't route them here — they fall
   through to whatever app is next in line.
-- No "resume last channel" behavior. If nothing is currently streaming,
-  the Play command is not registered/enabled, so the hardware key is a
-  no-op — there is no existing "resume" concept in the app today and
-  this doesn't introduce one.
+- No "resume last channel" behavior. The hardware key always toggles
+  mute — including before any channel has ever been played, same as
+  pressing `m` — there is no existing "resume" concept in the app today
+  and this doesn't introduce one. (The play/pause/toggle commands are
+  registered and enabled unconditionally in `mediakeys_start`, not
+  gated on playback state; what *is* gated is Now Playing metadata
+  publication — `syncNowPlaying` skips it entirely until a channel has
+  been played, so macOS never shows a blank Now Playing item.)
 - No change to `player.Player`, `internal/spectrum`, or the DSP/audio
   pipeline in `internal/player/real.go`.
 
