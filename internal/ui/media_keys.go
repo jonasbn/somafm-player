@@ -24,3 +24,17 @@ func waitForMediaKeyCmd(c mediakeys.Controller) tea.Cmd {
 func (m Model) handleMediaKeyMsg() Model {
 	return m.toggleMute()
 }
+
+// syncNowPlaying publishes the current channel/title/artist and playing
+// state to macOS. Playing is true only when connected and not muted —
+// "pause" means mute for a live stream, so that's what macOS should
+// reflect too. Called from every path that changes m.nowPlaying or
+// m.cfg.Muted.
+func (m Model) syncNowPlaying() {
+	m.mediaKeys.SetNowPlaying(mediakeys.NowPlayingInfo{
+		Channel: m.nowPlaying.channel,
+		Title:   m.nowPlaying.title,
+		Artist:  m.nowPlaying.artist,
+	})
+	m.mediaKeys.SetPlaying(m.nowPlaying.connected && !m.cfg.Muted)
+}

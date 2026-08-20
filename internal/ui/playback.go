@@ -67,6 +67,7 @@ func (m Model) handlePlaybackMsg(msg tea.Msg) (Model, tea.Cmd) {
 		m.cfg.LastChannel = msg.channelTitle
 		m.errMsg = ""
 		m.player.Play(msg.streamURL)
+		m.syncNowPlaying()
 		return m, nil
 
 	case player.TrackChangedMsg:
@@ -74,14 +75,17 @@ func (m Model) handlePlaybackMsg(msg tea.Msg) (Model, tea.Cmd) {
 		m.nowPlaying.title = msg.Title
 		m.nowPlaying.artist = msg.Artist
 		m.nowPlaying.trackStarted = time.Now()
+		m.syncNowPlaying()
 		return m, nil
 
 	case player.ConnectionLostMsg:
 		m.nowPlaying.connected = false
+		m.syncNowPlaying()
 		return m, nil
 
 	case player.ReconnectedMsg:
 		m.nowPlaying.connected = true
+		m.syncNowPlaying()
 		return m, nil
 
 	case channelsFetchedMsg:
