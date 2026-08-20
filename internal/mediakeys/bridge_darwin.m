@@ -38,9 +38,20 @@ void mediakeys_run_loop(void) {
     // command center wires up its internal XPC connection. Looping
     // runMode:beforeDate: with a distant-future date is the standard
     // idiom for pumping a background thread's run loop forever.
+    //
+    // This thread has no NSApplication wrapping each iteration in its
+    // own autorelease pool the way the main thread would, so we do it
+    // ourselves -- otherwise autoreleased objects created while
+    // servicing the run loop (e.g. by command-handler block invocation)
+    // never get released. runLoop/distantFuture are hoisted out of the
+    // loop since both are effectively singletons; no need to refetch
+    // them every iteration.
+    NSRunLoop *runLoop = [NSRunLoop currentRunLoop];
+    NSDate *distantFuture = [NSDate distantFuture];
     while (1) {
-        [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode
-                                  beforeDate:[NSDate distantFuture]];
+        @autoreleasepool {
+            [runLoop runMode:NSDefaultRunLoopMode beforeDate:distantFuture];
+        }
     }
 }
 
