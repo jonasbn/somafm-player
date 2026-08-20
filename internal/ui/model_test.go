@@ -8,6 +8,7 @@ import (
 	"github.com/jonasbn/somafm-player/internal/channels"
 	"github.com/jonasbn/somafm-player/internal/config"
 	"github.com/jonasbn/somafm-player/internal/history"
+	"github.com/jonasbn/somafm-player/internal/mediakeys"
 	"github.com/jonasbn/somafm-player/internal/player"
 )
 
@@ -16,12 +17,17 @@ func newTestModel() Model {
 		{Title: "Groove Salad"},
 		{Title: "Drone Zone"},
 	}
-	return New(config.DefaultConfig(), chs, player.NewFakePlayer(), history.New(5))
+	return New(config.DefaultConfig(), chs, player.NewFakePlayer(), history.New(5), mediakeys.NewFakeController())
 }
 
 func newTestModelWithPlayer(p player.Player) Model {
 	chs := []channels.Channel{{Title: "Groove Salad"}, {Title: "Drone Zone"}}
-	return New(config.DefaultConfig(), chs, p, history.New(5))
+	return New(config.DefaultConfig(), chs, p, history.New(5), mediakeys.NewFakeController())
+}
+
+func newTestModelWithPlayerAndMediaKeys(p player.Player, mk mediakeys.Controller) Model {
+	chs := []channels.Channel{{Title: "Groove Salad"}, {Title: "Drone Zone"}}
+	return New(config.DefaultConfig(), chs, p, history.New(5), mk)
 }
 
 func key(s string) tea.KeyMsg {
@@ -53,7 +59,7 @@ func TestNew_DefaultsChannelsFilterToBookmarkedWhenBookmarksExist(t *testing.T) 
 	cfg.BookmarkedChannels = []string{"Groove Salad"}
 	chs := []channels.Channel{{Title: "Groove Salad"}, {Title: "Drone Zone"}}
 
-	m := New(cfg, chs, player.NewFakePlayer(), history.New(5))
+	m := New(cfg, chs, player.NewFakePlayer(), history.New(5), mediakeys.NewFakeController())
 
 	if m.channelsFilter != filterBookmarked {
 		t.Fatalf("channelsFilter = %v, want filterBookmarked when bookmarks exist", m.channelsFilter)
@@ -217,14 +223,14 @@ func TestUpdate_VisualizerTickMsgNoOpAndNoRescheduleWhenDisabled(t *testing.T) {
 func TestInit_SchedulesVisualizerTickWhenEnabledInConfig(t *testing.T) {
 	cfg := config.DefaultConfig()
 	cfg.VisualizerEnabled = true
-	m := New(cfg, nil, player.NewFakePlayer(), history.New(5))
+	m := New(cfg, nil, player.NewFakePlayer(), history.New(5), mediakeys.NewFakeController())
 
 	batch, ok := m.Init()().(tea.BatchMsg)
 	if !ok {
 		t.Fatalf("Init()() = %T, want tea.BatchMsg", m.Init()())
 	}
-	if len(batch) != 3 {
-		t.Fatalf("len(batch) = %d, want 3 (waitForPlayerMsg, tickCmd, visualizerTickCmd)", len(batch))
+	if len(batch) != 4 {
+		t.Fatalf("len(batch) = %d, want 4 (waitForPlayerMsg, waitForMediaKeyCmd, tickCmd, visualizerTickCmd)", len(batch))
 	}
 }
 
@@ -235,8 +241,8 @@ func TestInit_DoesNotScheduleVisualizerTickWhenDisabled(t *testing.T) {
 	if !ok {
 		t.Fatalf("Init()() = %T, want tea.BatchMsg", m.Init()())
 	}
-	if len(batch) != 2 {
-		t.Fatalf("len(batch) = %d, want 2 (waitForPlayerMsg, tickCmd)", len(batch))
+	if len(batch) != 3 {
+		t.Fatalf("len(batch) = %d, want 3 (waitForPlayerMsg, waitForMediaKeyCmd, tickCmd)", len(batch))
 	}
 }
 
@@ -246,7 +252,7 @@ func TestNew_SyncsSavedVolumeAndMuteIntoPlayer(t *testing.T) {
 	cfg.Volume = 20
 	cfg.Muted = true
 
-	_ = New(cfg, nil, fp, history.New(5))
+	_ = New(cfg, nil, fp, history.New(5), mediakeys.NewFakeController())
 
 	if got := fp.Volume(); got != 20 {
 		t.Fatalf("player volume after New() = %d, want 20 (from saved config)", got)

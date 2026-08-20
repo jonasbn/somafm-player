@@ -19,5 +19,6 @@ func (m Model) adjustVolume(delta int) Model {
 func (m Model) toggleMute() Model {
 	m.cfg.Muted = !m.cfg.Muted
 	m.player.SetMuted(m.cfg.Muted)
+	m.syncNowPlaying()
 	return m
 }

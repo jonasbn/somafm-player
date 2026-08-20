@@ -18,6 +18,7 @@ A terminal (TUI) player for [SomaFM](https://somafm.com) Icecast streams, built 
 - Channel-aware ASCII logo banner above the Now Playing panel.
 - Switchable color themes: Nord, Dracula, Gruvbox, Tokyo Night, Solarized Dark, Solarized Light.
 - Settings (bookmarks, volume, theme, last-played channel, visualizer toggle) persist across sessions.
+- macOS hardware media-key (play/pause) support, with Now Playing metadata shown in Control Center and on the lock screen.
 
 ## Requirements
 
@@ -81,6 +82,7 @@ somafm-player
 | `b` | bookmark (context-sensitive: tune on Now Playing, channel on Channels/Bookmarked Channels, tune on History) |
 | `+`/`-` or arrows | volume up/down |
 | `m` | mute/unmute |
+| hardware media key (play/pause, macOS) | mute/unmute, same as `m` — only while somafm-player is the current Now Playing app |
 | `t` | cycle theme |
 | `v` | toggle equalizer visualizer |
 | `r` | retry fetching the channel list (e.g. after a startup network error) |
