@@ -35,19 +35,6 @@ func waitForPlayerMsg(p player.Player) tea.Cmd {
 	}
 }
 
-func (m Model) recordCurrentTrackToHistory() Model {
-	if m.nowPlaying.title == "" {
-		return m
-	}
-	m.hist.Add(history.Entry{
-		Title:    m.nowPlaying.title,
-		Artist:   m.nowPlaying.artist,
-		Channel:  m.nowPlaying.channel,
-		PlayedAt: time.Now(),
-	})
-	return m
-}
-
 func (m Model) handlePlaybackMsg(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case streamResolvedMsg:
@@ -55,7 +42,6 @@ func (m Model) handlePlaybackMsg(msg tea.Msg) (Model, tea.Cmd) {
 			m.errMsg = msg.err.Error()
 			return m, nil
 		}
-		m = m.recordCurrentTrackToHistory()
 		bitrate, codec := channels.ParseBitrateFromURL(msg.streamURL)
 		m.nowPlaying = nowPlayingState{
 			channel:      msg.channelTitle,
@@ -70,10 +56,17 @@ func (m Model) handlePlaybackMsg(msg tea.Msg) (Model, tea.Cmd) {
 		return m, nil
 
 	case player.TrackChangedMsg:
-		m = m.recordCurrentTrackToHistory()
 		m.nowPlaying.title = msg.Title
 		m.nowPlaying.artist = msg.Artist
 		m.nowPlaying.trackStarted = time.Now()
+		if msg.Title != "" {
+			m.hist.Add(history.Entry{
+				Title:    msg.Title,
+				Artist:   msg.Artist,
+				Channel:  m.nowPlaying.channel,
+				PlayedAt: time.Now(),
+			})
+		}
 		return m, nil
 
 	case player.ConnectionLostMsg:

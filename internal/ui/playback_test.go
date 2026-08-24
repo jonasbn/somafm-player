@@ -69,40 +69,37 @@ func TestUpdate_StreamResolvedMsgStartsPlaybackAndSetsNowPlaying(t *testing.T) {
 	}
 }
 
-func TestUpdate_TrackChangedMsgRecordsPreviousTrackToHistory(t *testing.T) {
+func TestUpdate_TrackChangedMsgRecordsNewTrackToHistoryImmediately(t *testing.T) {
 	m := newTestModel()
 	m.nowPlaying = nowPlayingState{title: "Old Track", artist: "Old Artist", channel: "Groove Salad"}
 
+	before := time.Now()
 	next, _ := m.Update(player.TrackChangedMsg{Title: "New Track", Artist: "New Artist"})
+	after := time.Now()
 	m = next.(Model)
 
 	if m.nowPlaying.title != "New Track" || m.nowPlaying.artist != "New Artist" {
 		t.Fatalf("nowPlaying = %+v, want New Track/New Artist", m.nowPlaying)
 	}
 	entries := m.hist.Entries()
-	if len(entries) != 1 || entries[0].Title != "Old Track" {
-		t.Fatalf("history entries = %+v, want the previous track recorded", entries)
+	if len(entries) != 1 || entries[0].Title != "New Track" || entries[0].Artist != "New Artist" || entries[0].Channel != "Groove Salad" {
+		t.Fatalf("history entries = %+v, want the newly started track recorded immediately", entries)
+	}
+	playedAt := entries[0].PlayedAt
+	if playedAt.Before(before) || playedAt.After(after) {
+		t.Fatalf("recorded entry PlayedAt = %v, want between %v and %v", playedAt, before, after)
 	}
 }
 
-func TestRecordCurrentTrackToHistory_SetsPlayedAtToNow(t *testing.T) {
+func TestUpdate_TrackChangedMsgWithEmptyTitleDoesNotRecordToHistory(t *testing.T) {
 	m := newTestModel()
-	m.nowPlaying = nowPlayingState{title: "Track", artist: "Artist", channel: "Channel"}
+	m.nowPlaying = nowPlayingState{channel: "Groove Salad"}
 
-	before := time.Now()
-	m = m.recordCurrentTrackToHistory()
-	after := time.Now()
+	next, _ := m.Update(player.TrackChangedMsg{Title: "", Artist: ""})
+	m = next.(Model)
 
-	entries := m.hist.Entries()
-	if len(entries) != 1 {
-		t.Fatalf("history entries = %+v, want 1 entry", entries)
-	}
-	playedAt := entries[0].PlayedAt
-	if playedAt.IsZero() {
-		t.Fatal("recorded entry PlayedAt is zero value, want time.Now() at record time")
-	}
-	if playedAt.Before(before) || playedAt.After(after) {
-		t.Fatalf("recorded entry PlayedAt = %v, want between %v and %v", playedAt, before, after)
+	if entries := m.hist.Entries(); len(entries) != 0 {
+		t.Fatalf("history entries = %+v, want none recorded for an empty title", entries)
 	}
 }
 
