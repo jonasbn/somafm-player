@@ -42,7 +42,9 @@ jobs:
           go-version-file: go.mod
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
-          version: latest
+          # v2.13.0+ requires Go >= 1.26.0 (go.mod's `go` directive is pinned lower);
+          # v2.12.0 is the newest release still compatible with the toolchain setup-go provisions.
+          version: v2.12.0
           install-mode: goinstall
 
   govulncheck:
