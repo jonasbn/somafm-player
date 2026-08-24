@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-08-24
+
+### Changed
+
+- History now records the currently playing track the moment it starts
+  (on connect or track change) instead of only once it's replaced by the
+  next track. The current tune shows up in the History tab immediately and
+  can be bookmarked right away, and it's no longer lost if you quit or
+  switch channels before the next track plays.
+
 ## [0.4.1] - 2026-07-15
 
 ### Fixed
@@ -112,6 +122,7 @@ Initial tagged release: a working terminal player for SomaFM stations.
 - Tidied `go.mod` to correctly mark direct dependencies (bubbletea, lipgloss).
 - Isolated `TestUpdate_QuitsOnQ` from the real user config directory.
 
+[0.5.0]: https://github.com/jonasbn/somafm-player/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/jonasbn/somafm-player/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/jonasbn/somafm-player/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/jonasbn/somafm-player/compare/v0.3.1...v0.3.2
