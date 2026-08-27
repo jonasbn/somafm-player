@@ -84,14 +84,40 @@ func New(cfg config.Config, chs []channels.Channel, p player.Player, hist *histo
 	}
 
 	return Model{
-		cfg:            cfg,
-		channels:       chs,
-		channelsFilter: filter,
-		player:         p,
-		hist:           hist,
-		width:          defaultWidth,
-		sessionStarted: time.Now(),
+		cfg:             cfg,
+		channels:        chs,
+		channelSelected: initialChannelSelection(cfg, chs, filter),
+		channelsFilter:  filter,
+		player:          p,
+		hist:            hist,
+		width:           defaultWidth,
+		sessionStarted:  time.Now(),
 	}
+}
+
+// initialChannelSelection returns the index the Channels box should highlight
+// on startup so it matches the stream Init() auto-resumes (cfg.LastChannel).
+// The index is into whichever list `filter` selects, mirroring
+// selectedChannel(). Falls back to 0 when LastChannel is unset or absent from
+// that list.
+func initialChannelSelection(cfg config.Config, chs []channels.Channel, filter channelsFilter) int {
+	if cfg.LastChannel == "" {
+		return 0
+	}
+	if filter == filterBookmarked {
+		for i, title := range cfg.BookmarkedChannels {
+			if title == cfg.LastChannel {
+				return i
+			}
+		}
+		return 0
+	}
+	for i, ch := range chs {
+		if ch.Title == cfg.LastChannel {
+			return i
+		}
+	}
+	return 0
 }
 
 func (m Model) Init() tea.Cmd {

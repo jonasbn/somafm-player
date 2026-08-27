@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- On startup the Channels box now highlights the channel that auto-resumes
+  (`lastChannel`) instead of always defaulting to the first entry, so the
+  selection and the stream that starts playing no longer disagree. The
+  highlighted index is resolved within the active list (all channels or the
+  bookmarked filter) and falls back to the first entry when `lastChannel`
+  is unset or missing. ([#12](https://github.com/jonasbn/somafm-player/issues/12))
+
 ## [0.5.0] - 2026-08-24
 
 ### Changed

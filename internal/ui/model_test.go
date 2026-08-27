@@ -255,3 +255,48 @@ func TestNew_SyncsSavedVolumeAndMuteIntoPlayer(t *testing.T) {
 		t.Fatal("player muted after New() = false, want true (from saved config)")
 	}
 }
+
+func TestNew_SelectsLastChannelInChannelsBox(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.LastChannel = "Drone Zone" // index 1 in the list below, not the first entry
+	chs := []channels.Channel{{Title: "Groove Salad"}, {Title: "Drone Zone"}}
+
+	m := New(cfg, chs, player.NewFakePlayer(), history.New(5))
+
+	if m.channelSelected != 1 {
+		t.Fatalf("channelSelected = %d, want 1 (index of LastChannel)", m.channelSelected)
+	}
+	ch, ok := m.selectedChannel()
+	if !ok || ch.Title != "Drone Zone" {
+		t.Fatalf("selectedChannel() = (%+v, %v), want Drone Zone", ch, ok)
+	}
+}
+
+func TestNew_SelectsLastChannelWithinBookmarkedFilter(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.BookmarkedChannels = []string{"Groove Salad", "Drone Zone"} // -> filterBookmarked
+	cfg.LastChannel = "Drone Zone"                                  // index 1 within the bookmarked list
+	chs := []channels.Channel{{Title: "Groove Salad"}, {Title: "Drone Zone"}}
+
+	m := New(cfg, chs, player.NewFakePlayer(), history.New(5))
+
+	if m.channelSelected != 1 {
+		t.Fatalf("channelSelected = %d, want 1 (index of LastChannel in bookmarked list)", m.channelSelected)
+	}
+	ch, ok := m.selectedChannel()
+	if !ok || ch.Title != "Drone Zone" {
+		t.Fatalf("selectedChannel() = (%+v, %v), want Drone Zone", ch, ok)
+	}
+}
+
+func TestNew_DefaultsSelectionToZeroWhenLastChannelUnknown(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.LastChannel = "Nonexistent Channel"
+	chs := []channels.Channel{{Title: "Groove Salad"}, {Title: "Drone Zone"}}
+
+	m := New(cfg, chs, player.NewFakePlayer(), history.New(5))
+
+	if m.channelSelected != 0 {
+		t.Fatalf("channelSelected = %d, want 0 when LastChannel is not in the list", m.channelSelected)
+	}
+}
