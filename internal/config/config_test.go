@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -71,5 +72,54 @@ func TestLoad_MissingFileReturnsDefaults(t *testing.T) {
 	def := DefaultConfig()
 	if cfg.Volume != def.Volume || cfg.Theme != def.Theme {
 		t.Fatalf("Load() on missing file = %+v, want defaults %+v", cfg, def)
+	}
+}
+
+func TestLoad_PartialFileKeepsDefaultsForMissingFields(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	path, err := Path()
+	if err != nil {
+		t.Fatalf("Path returned error: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("MkdirAll returned error: %v", err)
+	}
+	// A hand-written config with only some keys, e.g. copied from the
+	// README, must not zero out the rest (volume 0 makes playback silent).
+	partial := []byte(`{"visualizerEnabled": true, "visualizerStyle": "classic"}`)
+	if err := os.WriteFile(path, partial, 0o644); err != nil {
+		t.Fatalf("WriteFile returned error: %v", err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	def := DefaultConfig()
+	if cfg.Volume != def.Volume || cfg.Theme != def.Theme {
+		t.Fatalf("Load() = volume %d, theme %q; want defaults volume %d, theme %q", cfg.Volume, cfg.Theme, def.Volume, def.Theme)
+	}
+	if !cfg.VisualizerEnabled || cfg.VisualizerStyle != "classic" {
+		t.Fatalf("Load() = %+v, want the file's visualizer settings applied", cfg)
+	}
+}
+
+func TestLoad_ExplicitZeroVolumeIsKept(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+
+	cfg := DefaultConfig()
+	cfg.Volume = 0
+	if err := Save(cfg); err != nil {
+		t.Fatalf("Save returned error: %v", err)
+	}
+	loaded, err := Load()
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+	if loaded.Volume != 0 {
+		t.Fatalf("Load().Volume = %d, want 0 (explicitly saved)", loaded.Volume)
 	}
 }

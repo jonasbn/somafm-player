@@ -56,7 +56,9 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	var cfg Config
+	// Start from the defaults so keys missing from the file (e.g. a
+	// hand-written config) keep their default values instead of zeroing.
+	cfg := DefaultConfig()
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return Config{}, err
 	}
