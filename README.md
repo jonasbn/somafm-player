@@ -89,6 +89,16 @@ somafm-player
 Config, including bookmarks, volume, theme, last-played channel, and visualizer setting, is stored at
 `~/.config/somafm-player/config.json` (or under `$XDG_CONFIG_HOME` if set).
 
+The optional `visualizerStyle` key in that file controls how the visualizer draws the lower, mirrored half of its bars:
+
+| Value | Rendering | Use when |
+|---|---|---|
+| `reverse` (default) | Standard block characters in reverse video, in eighths | Any font, opaque terminal background |
+| `classic` | Only `▔` / `▀` / `█`, coarser steps | Transparent terminal background (reverse video paints the empty part of a cell opaque) |
+| `legacy` | Unicode 13 "Symbols for Legacy Computing" characters (`🮂🮃🮄🮅🮆`), in eighths | Your font covers that block (e.g. Iosevka), or your terminal draws block characters itself (e.g. Kitty, WezTerm, Ghostty) |
+
+Fonts that lack those characters, such as JetBrains Mono, render the lower half blank with `legacy`.
+
 ## How it works
 
 SomaFM channels are published as `.pls` playlists that point to plain HTTP Icecast streams (MP3 or AAC, with ICY metadata for track titles) — not a segmented format like HLS/DASH. The player resolves a channel's `.pls`, opens the Icecast stream with [`shoutcast`](https://github.com/romantomjak/shoutcast) to read ICY metadata and the raw audio, decodes MP3 with [`go-mp3`](https://github.com/hajimehoshi/go-mp3), and plays the decoded PCM through `oto`.

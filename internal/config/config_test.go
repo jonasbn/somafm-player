@@ -26,6 +26,7 @@ func TestSaveThenLoad_RoundTrips(t *testing.T) {
 			{Title: "Track", Artist: "Artist", Channel: "Drone Zone", BookmarkedAt: time.Date(2026, 7, 13, 10, 0, 0, 0, time.UTC)},
 		},
 		VisualizerEnabled: true,
+		VisualizerStyle:   "classic",
 	}
 
 	if err := Save(cfg); err != nil {
@@ -41,6 +42,9 @@ func TestSaveThenLoad_RoundTrips(t *testing.T) {
 	}
 	if loaded.VisualizerEnabled != cfg.VisualizerEnabled {
 		t.Fatalf("loaded.VisualizerEnabled = %v, want %v", loaded.VisualizerEnabled, cfg.VisualizerEnabled)
+	}
+	if loaded.VisualizerStyle != cfg.VisualizerStyle {
+		t.Fatalf("loaded.VisualizerStyle = %q, want %q", loaded.VisualizerStyle, cfg.VisualizerStyle)
 	}
 	if len(loaded.BookmarkedChannels) != 2 || len(loaded.BookmarkedTunes) != 1 {
 		t.Fatalf("loaded config lists did not round-trip: %+v", loaded)

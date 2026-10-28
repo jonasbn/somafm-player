@@ -173,13 +173,24 @@ func TestUpperBarCell_UsesOnlyClassicBlockElements(t *testing.T) {
 	}
 }
 
-func TestAsciiUpperBarChar_RoundsToClassicTopAnchoredGlyphs(t *testing.T) {
+func TestClassicUpperBarChar_RoundsToClassicTopAnchoredGlyphs(t *testing.T) {
 	for _, tc := range []struct {
 		v    float64
 		want rune
 	}{{0, '▔'}, {0.5, '▀'}, {1, '█'}} {
-		if got := asciiUpperBarChar(tc.v); got != tc.want {
-			t.Errorf("asciiUpperBarChar(%v) = %q, want %q", tc.v, got, tc.want)
+		if got := classicUpperBarChar(tc.v); got != tc.want {
+			t.Errorf("classicUpperBarChar(%v) = %q, want %q", tc.v, got, tc.want)
+		}
+	}
+}
+
+func TestLegacyUpperBarChar_MapsLevelsAcrossRange(t *testing.T) {
+	for _, tc := range []struct {
+		v    float64
+		want rune
+	}{{0, '▔'}, {0.5, '🮄'}, {1, '█'}} {
+		if got := legacyUpperBarChar(tc.v); got != tc.want {
+			t.Errorf("legacyUpperBarChar(%v) = %q, want %q", tc.v, got, tc.want)
 		}
 	}
 }
@@ -265,6 +276,41 @@ func TestRenderVisualizerBox_BelowCenterRowsFallBackWithoutColor(t *testing.T) {
 	}
 	if !strings.ContainsAny(lines[3], "▔▀") {
 		t.Fatalf("inner-below row (lines[3]) should use classic top-anchored glyphs without color support:\n%q", lines[3])
+	}
+}
+
+func TestRenderVisualizerBox_BelowCenterRowsFollowVisualizerStyle(t *testing.T) {
+	withColorProfile(t, termenv.TrueColor)
+	const reverseVideo = "\x1b[7;"
+	const legacyOnly = "🮂🮃🮄🮅🮆"
+	for _, tc := range []struct {
+		style       string
+		wantReverse bool
+		wantAny     string
+		wantNone    string
+	}{
+		{style: "", wantReverse: true, wantAny: "▁▂▃▄▅▆▇", wantNone: legacyOnly},
+		{style: "unknown", wantReverse: true, wantAny: "▁▂▃▄▅▆▇", wantNone: legacyOnly},
+		{style: visualizerStyleReverse, wantReverse: true, wantAny: "▁▂▃▄▅▆▇", wantNone: legacyOnly},
+		// classic and legacy never use reverse video, so the empty part of
+		// a cell keeps a transparent terminal background visible.
+		{style: visualizerStyleClassic, wantReverse: false, wantAny: "▔▀", wantNone: "▁▂▃▄▅▆▇" + legacyOnly},
+		{style: visualizerStyleLegacy, wantReverse: false, wantAny: legacyOnly, wantNone: "▁▂▃▄▅▆▇"},
+	} {
+		m := newTestModel()
+		m.cfg.VisualizerStyle = tc.style
+		m.bands = []float64{0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3}
+		lines := strings.Split(m.renderVisualizerBox(theme.Get("Nord"), 20), "\n")
+
+		if got := strings.Contains(lines[3], reverseVideo); got != tc.wantReverse {
+			t.Errorf("style %q: inner-below row uses reverse video = %v, want %v:\n%q", tc.style, got, tc.wantReverse, lines[3])
+		}
+		if !strings.ContainsAny(lines[3], tc.wantAny) {
+			t.Errorf("style %q: inner-below row should contain one of %q:\n%q", tc.style, tc.wantAny, lines[3])
+		}
+		if strings.ContainsAny(lines[3], tc.wantNone) {
+			t.Errorf("style %q: inner-below row should not contain any of %q:\n%q", tc.style, tc.wantNone, lines[3])
+		}
 	}
 }
 

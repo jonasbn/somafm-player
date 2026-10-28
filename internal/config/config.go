@@ -22,6 +22,10 @@ type Config struct {
 	BookmarkedChannels []string         `json:"bookmarkedChannels"`
 	BookmarkedTunes    []BookmarkedTune `json:"bookmarkedTunes"`
 	VisualizerEnabled  bool             `json:"visualizerEnabled"`
+	// VisualizerStyle selects how the visualizer draws its below-center
+	// rows: "reverse", "classic" or "legacy". Empty or unknown values mean
+	// "reverse"; see internal/ui/visualizer.go.
+	VisualizerStyle string `json:"visualizerStyle,omitempty"`
 }
 
 func DefaultConfig() Config {

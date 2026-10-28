@@ -81,16 +81,38 @@ func barChar(v float64) rune {
 	return barLevels[idx]
 }
 
-// upperBarCell is barChar's top-anchored counterpart, used for the mirrored
-// waveform's below-center rows so a partial value visually grows away from
-// the center line. The classic Block Elements set only defines two
-// top-anchored fractions (▔ 1/8 and ▀ 4/8), and the rest live in the
-// "Symbols for Legacy Computing" block (U+1FB82-U+1FB86), which common
-// fonts such as JetBrains Mono don't cover. Instead, a top fill of n/8 is
-// drawn as the bottom-anchored glyph for the remaining (8-n)/8 in reverse
-// video: the glyph's ink takes the terminal background and the rest of the
-// cell takes the bar color. reverse reports whether the caller must render
-// the glyph that way; a full cell is a plain '█'.
+// Visualizer styles, selected by config.Config.VisualizerStyle, control how
+// the mirrored waveform's below-center rows draw a top-anchored partial
+// fill — a partial value there should visually grow away from the center
+// line, the same way barChar does above it. The classic Block Elements set
+// only defines two top-anchored fractions (▔ 1/8 and ▀ 4/8), so each style
+// trades precision, font coverage and terminal transparency differently.
+const (
+	// visualizerStyleReverse (the default) draws eighths with the
+	// bottom-anchored Block Elements glyphs in reverse video, which any
+	// font covers but paints the cell's empty part opaque on terminals
+	// with a transparent background.
+	visualizerStyleReverse = "reverse"
+	// visualizerStyleClassic rounds to ▔/▀/█: works with any font and
+	// keeps transparency, at reduced precision.
+	visualizerStyleClassic = "classic"
+	// visualizerStyleLegacy uses the top-anchored eighths from the
+	// "Symbols for Legacy Computing" block (U+1FB82-U+1FB86): full
+	// precision without reverse video, but only for fonts or terminals
+	// that cover that block (JetBrains Mono, for one, does not).
+	visualizerStyleLegacy = "legacy"
+)
+
+// legacyUpperBarLevels is barLevels' top-anchored counterpart for
+// visualizerStyleLegacy.
+var legacyUpperBarLevels = []rune{'▔', '🮂', '🮃', '▀', '🮄', '🮅', '🮆', '█'}
+
+// upperBarCell is barChar's top-anchored counterpart for
+// visualizerStyleReverse: a top fill of n/8 is drawn as the bottom-anchored
+// glyph for the remaining (8-n)/8 in reverse video, so the glyph's ink
+// takes the terminal background and the rest of the cell takes the bar
+// color. reverse reports whether the caller must render the glyph that
+// way; a full cell is a plain '█'.
 func upperBarCell(v float64) (glyph rune, reverse bool) {
 	n := topEighths(v)
 	if n == len(barLevels) {
@@ -99,11 +121,9 @@ func upperBarCell(v float64) (glyph rune, reverse bool) {
 	return barLevels[len(barLevels)-1-n], true
 }
 
-// asciiUpperBarChar approximates upperBarCell for terminals without color
-// support, where termenv drops reverse video along with color. It rounds to
-// the top-anchored fractions Block Elements does define: ▔ (1/8), ▀ (4/8)
-// and █ (8/8).
-func asciiUpperBarChar(v float64) rune {
+// classicUpperBarChar rounds a top-anchored fill to the fractions Block
+// Elements does define: ▔ (1/8), ▀ (4/8) and █ (8/8).
+func classicUpperBarChar(v float64) rune {
 	switch n := topEighths(v); {
 	case n <= 2:
 		return '▔'
@@ -112,6 +132,11 @@ func asciiUpperBarChar(v float64) rune {
 	default:
 		return '█'
 	}
+}
+
+// legacyUpperBarChar maps a top-anchored fill to legacyUpperBarLevels.
+func legacyUpperBarChar(v float64) rune {
+	return legacyUpperBarLevels[topEighths(v)-1]
 }
 
 // topEighths quantizes a 0.0-1.0 fill level to 1-8 eighths of a cell, the
@@ -126,11 +151,19 @@ func topEighths(v float64) int {
 	return int(v*float64(len(barLevels)-1)+0.5) + 1
 }
 
-// renderUpperBar renders upperBarCell's glyph for v in style, falling back
-// to asciiUpperBarChar when the color profile can't express reverse video.
-func renderUpperBar(style lipgloss.Style, v float64) string {
+// renderUpperBar renders a top-anchored fill of v in style, according to
+// visualizerStyle. The reverse style falls back to classic under the Ascii
+// color profile, where termenv drops reverse video along with color and a
+// reversed glyph would draw the wrong shape.
+func renderUpperBar(style lipgloss.Style, v float64, visualizerStyle string) string {
+	switch visualizerStyle {
+	case visualizerStyleLegacy:
+		return style.Render(string(legacyUpperBarChar(v)))
+	case visualizerStyleClassic:
+		return style.Render(string(classicUpperBarChar(v)))
+	}
 	if lipgloss.ColorProfile() == termenv.Ascii {
-		return style.Render(string(asciiUpperBarChar(v)))
+		return style.Render(string(classicUpperBarChar(v)))
 	}
 	glyph, reverse := upperBarCell(v)
 	return style.Reverse(reverse).Render(string(glyph))
@@ -208,14 +241,14 @@ func (m Model) renderVisualizerBox(t theme.Theme, width int) string {
 
 		if innerFilled {
 			innerAbove.WriteString(style.Render(string(barChar(inner))))
-			innerBelow.WriteString(renderUpperBar(style, inner))
+			innerBelow.WriteString(renderUpperBar(style, inner, m.cfg.VisualizerStyle))
 		} else {
 			innerAbove.WriteString(" ")
 			innerBelow.WriteString(" ")
 		}
 		if outerFilled {
 			outerAbove.WriteString(style.Render(string(barChar(outer))))
-			outerBelow.WriteString(renderUpperBar(style, outer))
+			outerBelow.WriteString(renderUpperBar(style, outer, m.cfg.VisualizerStyle))
 		} else {
 			outerAbove.WriteString(" ")
 			outerBelow.WriteString(" ")
