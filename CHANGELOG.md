@@ -5,6 +5,31 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-10-28
+
+### Added
+
+- `visualizerStyle` setting in `config.json` to choose how the visualizer
+  draws the lower, mirrored half of its bars: `reverse` (default),
+  `classic` (`▔`/`▀`/`█` only, works with transparent terminal
+  backgrounds) or `legacy` (the Unicode 13 "Symbols for Legacy Computing"
+  characters). ([#19](https://github.com/jonasbn/somafm-player/pull/19))
+- `scripts/check-visualizer-glyphs.sh`, which renders a sample of each
+  visualizer style so you can see which one your terminal and font draw
+  correctly. Honors `NO_COLOR`.
+- README section on visualizer fonts and terminals, with guidance on
+  choosing a style.
+
+### Fixed
+
+- The lower half of the visualizer rendered blank or as boxes with fonts
+  that lack the Unicode 13 "Symbols for Legacy Computing" characters, such
+  as JetBrains Mono (including the Nerd Font build). The default style now
+  uses only standard Block Elements characters, drawn in reverse video.
+- A `config.json` missing some keys (e.g. written by hand) loaded those
+  settings as zero values, so a file with only the visualizer settings
+  started at volume 0 with no theme. Missing keys now keep their defaults.
+
 ## [0.5.1] - 2026-08-27
 
 ### Fixed
@@ -133,6 +158,7 @@ Initial tagged release: a working terminal player for SomaFM stations.
 - Tidied `go.mod` to correctly mark direct dependencies (bubbletea, lipgloss).
 - Isolated `TestUpdate_QuitsOnQ` from the real user config directory.
 
+[0.6.0]: https://github.com/jonasbn/somafm-player/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/jonasbn/somafm-player/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/jonasbn/somafm-player/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/jonasbn/somafm-player/compare/v0.4.0...v0.4.1
