@@ -101,16 +101,13 @@ Whether the lower half renders correctly therefore depends on your font, your te
 | `classic` | Only `▔` / `▀` / `█` | Coarse (three steps) | None, works with any font | Works |
 | `legacy` | "Symbols for Legacy Computing" characters | Eighths | Font must cover U+1FB82–U+1FB86, unless the terminal draws block characters itself | Works |
 
-For example:
+To change it, **quit the player first** (it saves its settings on quit, which would overwrite your edit), then add the key to your existing `config.json` alongside the settings already there, for example:
 
 ```json
-{
-  "visualizerEnabled": true,
-  "visualizerStyle": "legacy"
-}
+"visualizerStyle": "legacy"
 ```
 
-An empty, missing or unrecognized value means `reverse`. There is no key binding for the style; edit the file and restart. If your terminal has no color support (e.g. `NO_COLOR` is set), `reverse` falls back to `classic`, because reverse video isn't available there.
+and start the player again. There is no key binding for the style. An empty, missing or unrecognized value means `reverse`. If your terminal has no color support (e.g. `NO_COLOR` is set), `reverse` falls back to `classic`, because reverse video isn't available there.
 
 **Choosing a style:**
 

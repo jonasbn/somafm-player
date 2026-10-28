@@ -12,10 +12,26 @@
 # shellcheck disable=SC2086
 set -f
 
-esc=$(printf '\033')
-color="${esc}[36m"           # bar color: cyan
-reverse="${esc}[7;36m"       # reverse video with the bar color
-reset="${esc}[0m"
+# Match the player's color detection (termenv): NO_COLOR, or CLICOLOR=0
+# without CLICOLOR_FORCE, disables color and with it reverse video, so the
+# player falls back from "reverse" to "classic".
+no_color=false
+if [ -n "${NO_COLOR:-}" ]; then
+	no_color=true
+elif [ "${CLICOLOR:-}" = 0 ] && { [ -z "${CLICOLOR_FORCE:-}" ] || [ "${CLICOLOR_FORCE}" = 0 ]; }; then
+	no_color=true
+fi
+
+if [ "${no_color}" = true ]; then
+	color=''
+	reverse=''
+	reset=''
+else
+	esc=$(printf '\033')
+	color="${esc}[36m"     # bar color: cyan
+	reverse="${esc}[7;36m" # reverse video with the bar color
+	reset="${esc}[0m"
+fi
 
 # Bottom-anchored eighths (upper half, all styles), 1/8 to 8/8.
 upper='▁ ▂ ▃ ▄ ▅ ▆ ▇ █'
@@ -73,13 +89,23 @@ EOF
 
 printf '1. reverse (default): works with any font\n\n'
 row "$upper"
-reverse_row
-cat <<EOF
+if [ "${no_color}" = true ]; then
+	row "$classic"
+	cat <<EOF
+
+   Color is disabled (NO_COLOR or CLICOLOR=0), so reverse video isn't
+   available and the player draws "reverse" exactly like "classic" below.
+
+EOF
+else
+	reverse_row
+	cat <<EOF
 
    If the lower row shows solid background-colored patches over a
    transparent terminal background, use "classic" or "legacy" instead.
 
 EOF
+fi
 
 printf '2. classic: works with any font and with transparency, three steps only\n\n'
 row "$upper"
@@ -109,9 +135,13 @@ done
 
 cat <<EOF
 
-Pick the best-looking sample that works, then set it as "reverse",
-"classic" or "legacy" in ~/.config/somafm-player/config.json (or under
-\$XDG_CONFIG_HOME), for example:
+Pick the best-looking sample that works. Then quit somafm-player if it's
+running (it saves its settings on quit, which would overwrite your edit),
+add the style as "reverse", "classic" or "legacy" to your existing
+~/.config/somafm-player/config.json (or under \$XDG_CONFIG_HOME), for
+example:
 
     "visualizerStyle": "classic"
+
+and start the player again.
 EOF
