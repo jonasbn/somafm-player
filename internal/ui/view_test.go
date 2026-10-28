@@ -131,7 +131,8 @@ func TestView_HidesVisualizerBoxByDefault(t *testing.T) {
 	// filled-volume glyph in the Now Playing box already uses '█'
 	// unconditionally (config.DefaultConfig().Volume=80 renders 8 of them),
 	// so including it here produces a false positive unrelated to the
-	// visualizer. '▁'-'▇' are exclusive to renderVisualizerBox/barChar.
+	// visualizer. '▁'-'▇' are exclusive to renderVisualizerBox (barChar and
+	// upperBarCell).
 	if strings.ContainsAny(out, "▁▂▃▄▅▆▇") {
 		t.Fatalf("View() output contains visualizer bar characters while disabled:\n%s", out)
 	}

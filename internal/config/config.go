@@ -22,6 +22,10 @@ type Config struct {
 	BookmarkedChannels []string         `json:"bookmarkedChannels"`
 	BookmarkedTunes    []BookmarkedTune `json:"bookmarkedTunes"`
 	VisualizerEnabled  bool             `json:"visualizerEnabled"`
+	// VisualizerStyle selects how the visualizer draws its below-center
+	// rows: "reverse", "classic" or "legacy". Empty or unknown values mean
+	// "reverse"; see internal/ui/visualizer.go.
+	VisualizerStyle string `json:"visualizerStyle,omitempty"`
 }
 
 func DefaultConfig() Config {
@@ -52,7 +56,9 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	var cfg Config
+	// Start from the defaults so keys missing from the file (e.g. a
+	// hand-written config) keep their default values instead of zeroing.
+	cfg := DefaultConfig()
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return Config{}, err
 	}

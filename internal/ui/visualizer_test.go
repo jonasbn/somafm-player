@@ -5,7 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/lucasb-eyer/go-colorful"
+	"github.com/muesli/termenv"
 
 	"github.com/jonasbn/somafm-player/internal/theme"
 )
@@ -140,20 +142,66 @@ func TestSplitMirroredLevels_ClampsOutOfRangeInput(t *testing.T) {
 	}
 }
 
-func TestUpperBarChar_MapsLevelsAcrossRange(t *testing.T) {
-	if got := upperBarChar(0); got != upperBarLevels[0] {
-		t.Errorf("upperBarChar(0) = %q, want %q", got, upperBarLevels[0])
-	}
-	if got := upperBarChar(1); got != upperBarLevels[len(upperBarLevels)-1] {
-		t.Errorf("upperBarChar(1) = %q, want %q", got, upperBarLevels[len(upperBarLevels)-1])
+func TestUpperBarCell_FullFillIsPlainFullBlock(t *testing.T) {
+	glyph, reverse := upperBarCell(1)
+	if glyph != '█' || reverse {
+		t.Fatalf("upperBarCell(1) = (%q, %v), want ('█', false)", glyph, reverse)
 	}
 }
 
-func TestUpperBarChar_DiffersFromBarCharForPartialFill(t *testing.T) {
-	v := 0.5
-	if upperBarChar(v) == barChar(v) {
-		t.Fatalf("upperBarChar(%v) and barChar(%v) should differ (top- vs bottom-anchored glyph sets) for a partial fill, both got %q", v, v, barChar(v))
+func TestUpperBarCell_PartialFillIsReversedComplement(t *testing.T) {
+	// A top fill of n/8 must be the bottom-anchored glyph for (8-n)/8 in
+	// reverse video, so the visible bar-colored part is the top n/8.
+	for k := 0; k < len(barLevels)-1; k++ {
+		v := float64(k) / float64(len(barLevels)-1)
+		n := k + 1
+		glyph, reverse := upperBarCell(v)
+		if want := barLevels[len(barLevels)-1-n]; glyph != want || !reverse {
+			t.Errorf("upperBarCell(%v) = (%q, %v), want (%q, true) for a %d/8 top fill", v, glyph, reverse, want, n)
+		}
 	}
+}
+
+func TestUpperBarCell_UsesOnlyClassicBlockElements(t *testing.T) {
+	// U+2580-U+259F is covered by virtually every monospace font, unlike
+	// the Symbols for Legacy Computing block (U+1FB00+) this replaces.
+	for i := 0; i <= 100; i++ {
+		glyph, _ := upperBarCell(float64(i) / 100)
+		if glyph < 0x2580 || glyph > 0x259F {
+			t.Fatalf("upperBarCell(%v) = %q (U+%04X), want a Block Elements glyph (U+2580-U+259F)", float64(i)/100, glyph, glyph)
+		}
+	}
+}
+
+func TestClassicUpperBarChar_RoundsToClassicTopAnchoredGlyphs(t *testing.T) {
+	for _, tc := range []struct {
+		v    float64
+		want rune
+	}{{0, '▔'}, {0.5, '▀'}, {1, '█'}} {
+		if got := classicUpperBarChar(tc.v); got != tc.want {
+			t.Errorf("classicUpperBarChar(%v) = %q, want %q", tc.v, got, tc.want)
+		}
+	}
+}
+
+func TestLegacyUpperBarChar_MapsLevelsAcrossRange(t *testing.T) {
+	for _, tc := range []struct {
+		v    float64
+		want rune
+	}{{0, '▔'}, {0.5, '🮄'}, {1, '█'}} {
+		if got := legacyUpperBarChar(tc.v); got != tc.want {
+			t.Errorf("legacyUpperBarChar(%v) = %q, want %q", tc.v, got, tc.want)
+		}
+	}
+}
+
+// withColorProfile sets lipgloss's global color profile for the duration of
+// the test, since `go test` output isn't a TTY and defaults to Ascii.
+func withColorProfile(t *testing.T, p termenv.Profile) {
+	t.Helper()
+	prev := lipgloss.ColorProfile()
+	lipgloss.SetColorProfile(p)
+	t.Cleanup(func() { lipgloss.SetColorProfile(prev) })
 }
 
 func TestRenderVisualizerBox_RendersFourMirroredContentRows(t *testing.T) {
@@ -178,7 +226,7 @@ func TestRenderVisualizerBox_TopAndBottomRowsMirrorFillPattern(t *testing.T) {
 	// Above/below use different (bottom- vs top-anchored) glyph sets so a
 	// partial value visually grows away from the center line on both
 	// sides — they are NOT expected to be byte-identical (see
-	// TestRenderVisualizerBox_BelowCenterRowsUseTopAnchoredGlyphs). What
+	// TestRenderVisualizerBox_BelowCenterRowsUseReverseVideo). What
 	// must still match is which columns are blank vs filled, since both
 	// sides make that decision from the same splitMirroredLevels() call.
 	// Counting literal space runs is a simple, ANSI-escape-safe proxy for
@@ -192,29 +240,77 @@ func TestRenderVisualizerBox_TopAndBottomRowsMirrorFillPattern(t *testing.T) {
 	}
 }
 
-func TestRenderVisualizerBox_BelowCenterRowsUseTopAnchoredGlyphs(t *testing.T) {
+func TestRenderVisualizerBox_BelowCenterRowsUseReverseVideo(t *testing.T) {
+	withColorProfile(t, termenv.TrueColor)
 	m := newTestModel()
 	// v=0.3 keeps inner partially filled (fraction 0.6, not maxed) and
-	// outer entirely blank, so lines[2]/lines[3] each exercise exactly one
-	// glyph set with no ambiguity from the shared full-block '█'.
+	// outer entirely blank, so lines[2]/lines[3] each exercise a partial
+	// glyph with no ambiguity from the plain full block '█'.
 	m.bands = []float64{0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3}
 	out := m.renderVisualizerBox(theme.Get("Nord"), 20)
 	lines := strings.Split(out, "\n")
 
-	const bottomAnchoredOnly = "▁▂▃▄▅▆▇" // barLevels minus the shared '█'
-	const topAnchoredOnly = "▔🮂🮃▀🮄🮅🮆"    // upperBarLevels minus the shared '█'
+	const reverseVideo = "\x1b[7;"
+	if strings.Contains(lines[2], reverseVideo) {
+		t.Fatalf("inner-above row (lines[2]) should not use reverse video:\n%q", lines[2])
+	}
+	if !strings.Contains(lines[3], reverseVideo) {
+		t.Fatalf("inner-below row (lines[3]) should draw its top-anchored fill in reverse video:\n%q", lines[3])
+	}
+	if strings.ContainsAny(lines[3], "🮂🮃🮄🮅🮆") {
+		t.Fatalf("inner-below row (lines[3]) should not use Symbols for Legacy Computing glyphs:\n%q", lines[3])
+	}
+}
 
-	if !strings.ContainsAny(lines[2], bottomAnchoredOnly) {
-		t.Fatalf("inner-above row (lines[2]) should use bottom-anchored glyphs:\n%q", lines[2])
+func TestRenderVisualizerBox_BelowCenterRowsFallBackWithoutColor(t *testing.T) {
+	withColorProfile(t, termenv.Ascii)
+	m := newTestModel()
+	m.bands = []float64{0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3}
+	out := m.renderVisualizerBox(theme.Get("Nord"), 20)
+	lines := strings.Split(out, "\n")
+
+	// Reverse video is dropped under Ascii, so a reversed bottom-anchored
+	// glyph would draw the wrong shape; only ▔/▀/█ are acceptable here.
+	if strings.ContainsAny(lines[3], "▁▂▃▄▅▆▇") {
+		t.Fatalf("inner-below row (lines[3]) should not use bottom-anchored glyphs without color support:\n%q", lines[3])
 	}
-	if strings.ContainsAny(lines[2], topAnchoredOnly) {
-		t.Fatalf("inner-above row (lines[2]) should not contain top-anchored glyphs:\n%q", lines[2])
+	if !strings.ContainsAny(lines[3], "▔▀") {
+		t.Fatalf("inner-below row (lines[3]) should use classic top-anchored glyphs without color support:\n%q", lines[3])
 	}
-	if !strings.ContainsAny(lines[3], topAnchoredOnly) {
-		t.Fatalf("inner-below row (lines[3]) should use top-anchored glyphs — a true mirror reflection, not a duplicate of the above-center row:\n%q", lines[3])
-	}
-	if strings.ContainsAny(lines[3], bottomAnchoredOnly) {
-		t.Fatalf("inner-below row (lines[3]) should not contain bottom-anchored glyphs:\n%q", lines[3])
+}
+
+func TestRenderVisualizerBox_BelowCenterRowsFollowVisualizerStyle(t *testing.T) {
+	withColorProfile(t, termenv.TrueColor)
+	const reverseVideo = "\x1b[7;"
+	const legacyOnly = "🮂🮃🮄🮅🮆"
+	for _, tc := range []struct {
+		style       string
+		wantReverse bool
+		wantAny     string
+		wantNone    string
+	}{
+		{style: "", wantReverse: true, wantAny: "▁▂▃▄▅▆▇", wantNone: legacyOnly},
+		{style: "unknown", wantReverse: true, wantAny: "▁▂▃▄▅▆▇", wantNone: legacyOnly},
+		{style: visualizerStyleReverse, wantReverse: true, wantAny: "▁▂▃▄▅▆▇", wantNone: legacyOnly},
+		// classic and legacy never use reverse video, so the empty part of
+		// a cell keeps a transparent terminal background visible.
+		{style: visualizerStyleClassic, wantReverse: false, wantAny: "▔▀", wantNone: "▁▂▃▄▅▆▇" + legacyOnly},
+		{style: visualizerStyleLegacy, wantReverse: false, wantAny: legacyOnly, wantNone: "▁▂▃▄▅▆▇"},
+	} {
+		m := newTestModel()
+		m.cfg.VisualizerStyle = tc.style
+		m.bands = []float64{0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3}
+		lines := strings.Split(m.renderVisualizerBox(theme.Get("Nord"), 20), "\n")
+
+		if got := strings.Contains(lines[3], reverseVideo); got != tc.wantReverse {
+			t.Errorf("style %q: inner-below row uses reverse video = %v, want %v:\n%q", tc.style, got, tc.wantReverse, lines[3])
+		}
+		if !strings.ContainsAny(lines[3], tc.wantAny) {
+			t.Errorf("style %q: inner-below row should contain one of %q:\n%q", tc.style, tc.wantAny, lines[3])
+		}
+		if strings.ContainsAny(lines[3], tc.wantNone) {
+			t.Errorf("style %q: inner-below row should not contain any of %q:\n%q", tc.style, tc.wantNone, lines[3])
+		}
 	}
 }
 

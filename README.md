@@ -89,6 +89,48 @@ somafm-player
 Config, including bookmarks, volume, theme, last-played channel, and visualizer setting, is stored at
 `~/.config/somafm-player/config.json` (or under `$XDG_CONFIG_HOME` if set).
 
+### Visualizer fonts and terminals
+
+The visualizer draws a mirrored waveform: bars grow up from a center line and, mirrored, down from it. The upper half uses the standard Block Elements characters `▁▂▃▄▅▆▇█`, which virtually every monospace font includes. The lower half needs bars that fill from the *top* of a character cell down, and Unicode's standard Block Elements only define two of those (`▔` and `▀`). The full set of eighths (`🮂🮃🮄🮅🮆`) lives in the newer "Symbols for Legacy Computing" block (Unicode 13, U+1FB82–U+1FB86), which many popular fonts don't include.
+
+Whether the lower half renders correctly therefore depends on your font, your terminal, and whether your terminal background is transparent. The optional `visualizerStyle` key in `config.json` lets you pick the rendering that fits your setup:
+
+| Value | Rendering | Precision | Font requirement | Transparent background |
+|---|---|---|---|---|
+| `reverse` (default) | Standard block characters in reverse video | Eighths | None, works with any font | Empty part of a partial cell is painted opaque |
+| `classic` | Only `▔` / `▀` / `█` | Coarse (three steps) | None, works with any font | Works |
+| `legacy` | "Symbols for Legacy Computing" characters | Eighths | Font must cover U+1FB82–U+1FB86, unless the terminal draws block characters itself | Works |
+
+To change it, **quit the player first** (it saves its settings on quit, which would overwrite your edit), then add the key to your existing `config.json` alongside the settings already there, for example:
+
+```json
+"visualizerStyle": "legacy"
+```
+
+and start the player again. There is no key binding for the style. An empty, missing or unrecognized value means `reverse`. If your terminal has no color support (e.g. `NO_COLOR` is set), `reverse` falls back to `classic`, because reverse video isn't available there.
+
+**Choosing a style:**
+
+The quickest way to decide is to see all three styles in your own terminal. From a clone of the repository, run:
+
+```sh
+scripts/check-visualizer-glyphs.sh
+```
+
+It prints a sample mirrored waveform for each style, plus the legacy-computing characters one by one, and explains what a broken sample looks like. Pick the best-looking sample that renders correctly. If you'd rather reason it through:
+
+1. **Does your terminal draw block characters itself?** Kitty, WezTerm, Ghostty and foot render block and legacy-computing characters natively, ignoring the font. Use `legacy`: it gives full precision and works with transparency, whatever your font.
+2. **Otherwise, does your font include the legacy-computing characters?** Terminals such as macOS Terminal.app and Alacritty take these characters from the font. Iosevka (including the Nerd Font build) includes them; JetBrains Mono and Fira Code (including their Nerd Font builds) do not, and render the lower half blank or as boxes with `legacy`. If your font has them, use `legacy`.
+3. **Otherwise,** use `reverse` if your terminal background is opaque, or `classic` if it is transparent.
+
+To check whether a font covers the legacy-computing characters, list the installed fonts that include one of them (needs fontconfig, e.g. `brew install fontconfig` on macOS):
+
+```sh
+fc-list ':charset=1fb82' family
+```
+
+If your font isn't in the output, it doesn't have the characters, and your terminal may fall back to another font or show nothing. Note that Nerd Fonts patch in icon glyphs, not these characters, so a Nerd Font build covers them only if its base font does.
+
 ## How it works
 
 SomaFM channels are published as `.pls` playlists that point to plain HTTP Icecast streams (MP3 or AAC, with ICY metadata for track titles) — not a segmented format like HLS/DASH. The player resolves a channel's `.pls`, opens the Icecast stream with [`shoutcast`](https://github.com/romantomjak/shoutcast) to read ICY metadata and the raw audio, decodes MP3 with [`go-mp3`](https://github.com/hajimehoshi/go-mp3), and plays the decoded PCM through `oto`.

@@ -5,6 +5,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lucasb-eyer/go-colorful"
+	"github.com/muesli/termenv"
 
 	"github.com/jonasbn/somafm-player/internal/theme"
 )
@@ -25,17 +26,6 @@ const (
 const minSideBySideVisualizerWidth = minDisplayBars + 2
 
 var barLevels = []rune{'▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
-
-// upperBarLevels is barLevels' top-anchored counterpart: where barLevels'
-// glyphs fill from the bottom of their cell upward, these fill from the
-// top downward. The classic Block Elements set only defines two
-// top-anchored fractions (▔ 1/8 and ▀ 4/8); the rest (🮂🮃🮄🮅🮆) come from
-// the newer "Symbols for Legacy Computing" block (Unicode 13+, U+1FB82-
-// U+1FB86) — used for the mirrored waveform's below-center rows so a
-// partial value visually grows away from the center line, the same way
-// barLevels does for the above-center rows, instead of reusing
-// barLevels there and just duplicating the above-center shape.
-var upperBarLevels = []rune{'▔', '🮂', '🮃', '▀', '🮄', '🮅', '🮆', '█'}
 
 // displayBarCount clamps width to [minDisplayBars, maxDisplayBars].
 func displayBarCount(width int) int {
@@ -91,16 +81,92 @@ func barChar(v float64) rune {
 	return barLevels[idx]
 }
 
-// upperBarChar is barChar's top-anchored counterpart — see upperBarLevels.
-func upperBarChar(v float64) rune {
+// Visualizer styles, selected by config.Config.VisualizerStyle, control how
+// the mirrored waveform's below-center rows draw a top-anchored partial
+// fill — a partial value there should visually grow away from the center
+// line, the same way barChar does above it. The classic Block Elements set
+// only defines two top-anchored fractions (▔ 1/8 and ▀ 4/8), so each style
+// trades precision, font coverage and terminal transparency differently.
+const (
+	// visualizerStyleReverse (the default) draws eighths with the
+	// bottom-anchored Block Elements glyphs in reverse video, which any
+	// font covers but paints the cell's empty part opaque on terminals
+	// with a transparent background.
+	visualizerStyleReverse = "reverse"
+	// visualizerStyleClassic rounds to ▔/▀/█: works with any font and
+	// keeps transparency, at reduced precision.
+	visualizerStyleClassic = "classic"
+	// visualizerStyleLegacy uses the top-anchored eighths from the
+	// "Symbols for Legacy Computing" block (U+1FB82-U+1FB86): full
+	// precision without reverse video, but only for fonts or terminals
+	// that cover that block (JetBrains Mono, for one, does not).
+	visualizerStyleLegacy = "legacy"
+)
+
+// legacyUpperBarLevels is barLevels' top-anchored counterpart for
+// visualizerStyleLegacy.
+var legacyUpperBarLevels = []rune{'▔', '🮂', '🮃', '▀', '🮄', '🮅', '🮆', '█'}
+
+// upperBarCell is barChar's top-anchored counterpart for
+// visualizerStyleReverse: a top fill of n/8 is drawn as the bottom-anchored
+// glyph for the remaining (8-n)/8 in reverse video, so the glyph's ink
+// takes the terminal background and the rest of the cell takes the bar
+// color. reverse reports whether the caller must render the glyph that
+// way; a full cell is a plain '█'.
+func upperBarCell(v float64) (glyph rune, reverse bool) {
+	n := topEighths(v)
+	if n == len(barLevels) {
+		return barLevels[len(barLevels)-1], false
+	}
+	return barLevels[len(barLevels)-1-n], true
+}
+
+// classicUpperBarChar rounds a top-anchored fill to the fractions Block
+// Elements does define: ▔ (1/8), ▀ (4/8) and █ (8/8).
+func classicUpperBarChar(v float64) rune {
+	switch n := topEighths(v); {
+	case n <= 2:
+		return '▔'
+	case n <= 6:
+		return '▀'
+	default:
+		return '█'
+	}
+}
+
+// legacyUpperBarChar maps a top-anchored fill to legacyUpperBarLevels.
+func legacyUpperBarChar(v float64) rune {
+	return legacyUpperBarLevels[topEighths(v)-1]
+}
+
+// topEighths quantizes a 0.0-1.0 fill level to 1-8 eighths of a cell, the
+// same steps barChar uses.
+func topEighths(v float64) int {
 	if v < 0 {
 		v = 0
 	}
 	if v > 1 {
 		v = 1
 	}
-	idx := int(v*float64(len(upperBarLevels)-1) + 0.5)
-	return upperBarLevels[idx]
+	return int(v*float64(len(barLevels)-1)+0.5) + 1
+}
+
+// renderUpperBar renders a top-anchored fill of v in style, according to
+// visualizerStyle. The reverse style falls back to classic under the Ascii
+// color profile, where termenv drops reverse video along with color and a
+// reversed glyph would draw the wrong shape.
+func renderUpperBar(style lipgloss.Style, v float64, visualizerStyle string) string {
+	switch visualizerStyle {
+	case visualizerStyleLegacy:
+		return style.Render(string(legacyUpperBarChar(v)))
+	case visualizerStyleClassic:
+		return style.Render(string(classicUpperBarChar(v)))
+	}
+	if lipgloss.ColorProfile() == termenv.Ascii {
+		return style.Render(string(classicUpperBarChar(v)))
+	}
+	glyph, reverse := upperBarCell(v)
+	return style.Reverse(reverse).Render(string(glyph))
 }
 
 // gradientColor interpolates a bar's color across three stops — Muted (0),
@@ -132,7 +198,7 @@ func gradientColor(v float64, t theme.Theme) lipgloss.Color {
 // the remainder, v in [0.5, 1.0]. It returns fill FRACTIONS (0.0-1.0)
 // rather than glyphs, since the same fraction renders as a different glyph
 // depending on which side of the center line it's drawn on — barChar
-// (bottom-anchored) above, upperBarChar (top-anchored) below — so a
+// (bottom-anchored) above, renderUpperBar (top-anchored) below — so a
 // partial value visually grows away from center on both sides instead of
 // the below side just duplicating the above side's shape.
 // innerFilled/outerFilled report whether each row should render a glyph at
@@ -175,14 +241,14 @@ func (m Model) renderVisualizerBox(t theme.Theme, width int) string {
 
 		if innerFilled {
 			innerAbove.WriteString(style.Render(string(barChar(inner))))
-			innerBelow.WriteString(style.Render(string(upperBarChar(inner))))
+			innerBelow.WriteString(renderUpperBar(style, inner, m.cfg.VisualizerStyle))
 		} else {
 			innerAbove.WriteString(" ")
 			innerBelow.WriteString(" ")
 		}
 		if outerFilled {
 			outerAbove.WriteString(style.Render(string(barChar(outer))))
-			outerBelow.WriteString(style.Render(string(upperBarChar(outer))))
+			outerBelow.WriteString(renderUpperBar(style, outer, m.cfg.VisualizerStyle))
 		} else {
 			outerAbove.WriteString(" ")
 			outerBelow.WriteString(" ")
