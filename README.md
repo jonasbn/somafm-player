@@ -114,6 +114,14 @@ An empty, missing or unrecognized value means `reverse`. There is no key binding
 
 **Choosing a style:**
 
+The quickest way to decide is to see all three styles in your own terminal. From a clone of the repository, run:
+
+```sh
+scripts/check-visualizer-glyphs.sh
+```
+
+It prints a sample mirrored waveform for each style, plus the legacy-computing characters one by one, and explains what a broken sample looks like. Pick the best-looking sample that renders correctly. If you'd rather reason it through:
+
 1. **Does your terminal draw block characters itself?** Kitty, WezTerm, Ghostty and foot render block and legacy-computing characters natively, ignoring the font. Use `legacy`: it gives full precision and works with transparency, whatever your font.
 2. **Otherwise, does your font include the legacy-computing characters?** Terminals such as macOS Terminal.app and Alacritty take these characters from the font. Iosevka (including the Nerd Font build) includes them; JetBrains Mono and Fira Code (including their Nerd Font builds) do not, and render the lower half blank or as boxes with `legacy`. If your font has them, use `legacy`.
 3. **Otherwise,** use `reverse` if your terminal background is opaque, or `classic` if it is transparent.
